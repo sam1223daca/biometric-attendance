@@ -213,22 +213,11 @@ To set up the system from absolute scratch on a clean workstation, follow this e
 ### Step 4: Approve the Admin Account via SQLite
 *Since there are no approved administrators yet to grant access from the UI, you must approve the first admin account directly:*
 1. Keep the server running. Open a third terminal window in the root directory.
-2. Open python interactive shell:
-   ```bash
-   python
+2. Run this single PowerShell command to instantly approve your registered admin account:
+   ```powershell
+   python -c "import sqlite3; conn=sqlite3.connect('attendance.db'); conn.cursor().execute('UPDATE users SET approved=1 WHERE role=\'Admin\''); conn.commit(); conn.close(); print('First Admin approved successfully!')"
    ```
-3. Run this script block to approve user ID `1` (your first registered admin account):
-   ```python
-   import sqlite3
-   conn = sqlite3.connect("attendance.db")
-   cursor = conn.cursor()
-   cursor.execute("UPDATE users SET approved = 1 WHERE id = 1")
-   conn.commit()
-   conn.close()
-   print("Successfully approved first administrator!")
-   exit()
-   ```
-4. Now, go back to the main dashboard, click **Admin Portal**, scan your fingerprint, and you will have full access to approve or delete subsequent users directly from the UI!
+3. Now, go back to the main dashboard, click **Admin Portal**, scan your fingerprint, and you will have full access to approve or delete subsequent users directly from the UI!
 
 ### Step 5: User Check-In and Out
 1. Enrolled and approved users can visit the **Desktop Checkpoint** page (Kiosk).
