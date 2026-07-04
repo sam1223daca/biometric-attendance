@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authority Code Portal</title>
+    
+    <!-- Unified CSS Design -->
+    <link rel="stylesheet" href="/static/css/style.css">
+    
+    <style>
+        .otp-container {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin: 24px 0;
+        }
+        
+        .otp-box {
+            width: 44px;
+            height: 52px;
+            border-radius: var(--radius-medium);
+            background: white;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.02);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--system-blue);
+            transition: var(--transition-smooth);
+        }
+        
+        .otp-divider {
+            width: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-secondary);
+        }
+        
+        .timer-track {
+            width: 100%;
+            height: 6px;
+            background: rgba(0, 0, 0, 0.04);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+        
+        .timer-fill {
+            height: 100%;
+            width: 100%;
+            background: var(--system-blue);
+            border-radius: 10px;
+            transition: width 1s linear, background-color 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-blob blob-blue"></div>
+    <div class="bg-blob blob-pink"></div>
+
+    <div class="app-container" style="max-width: 450px; min-height: 100vh; justify-content: center; padding: 20px 10px;">
+        <header style="margin-bottom: 24px;">
+            <a href="/" class="brand">
+                <div class="brand-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M2 12a10 10 0 0 1 20 0c0 .76-.05 1.52-.16 2.27" />
+                        <path d="M5 12a7 7 0 0 1 14 0c0 1.45-.16 2.9-.48 4.3" />
+                        <path d="M8 12a4 4 0 0 1 8 0c0 2.1-.28 4.2-.82 6.24" />
+                        <path d="M11 12a1 1 0 0 1 2 0c0 2.72-.37 5.43-1.11 8.08" />
+                        <path d="M12 2C6.48 2 2 6.48 2 12" />
+                        <path d="M12 5c-3.87 0-7 3.13-7 7" />
+                        <path d="M12 8c-2.21 0-4 1.79-4 4" />
+                    </svg>
+                </div>
+                <span class="brand-title">PassBiometric</span>
+            </a>
+            <a href="/register" class="btn btn-secondary" style="padding: 6px 14px; font-size: 13px;">Onboarding</a>
+        </header>
+
+        <!-- Glassmorphism OTP Card -->
+        <div class="glass-card" style="padding: 35px; text-align: center;">
+            <h2 style="font-size: 22px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px; margin-bottom: 6px;">Registration Access Code</h2>
+            <p style="font-size: 13px; color: var(--text-secondary); max-width: 300px; margin: 0 auto 10px;">
+                Enter this code on the enrollment portal to register a Teacher or Admin.
+            </p>
+            
+            <!-- OTP Box Segments -->
+            <div class="otp-container" id="otp-boxes-wrapper">
+                <div class="otp-box">A</div>
+                <div class="otp-box">D</div>
+                <div class="otp-box">M</div>
+                <div class="otp-divider">-</div>
+                <div class="otp-box">W</div>
+                <div class="otp-box">A</div>
+                <div class="otp-box">I</div>
+                <div class="otp-box">T</div>
+            </div>
+            
+            <!-- Progress Countdown -->
+            <div class="timer-track">
+                <div class="timer-fill" id="timer-progress-fill"></div>
+            </div>
+            
+            <div class="sync-status" style="justify-content: center; margin-bottom: 20px; font-size: 14px;">
+                ⏱️ Code rotates in <span id="timer-seconds-text" style="font-weight: 700; color: var(--text-primary);">5:00</span>
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 24px;">
+                <button id="copy-code-btn" class="btn btn-primary" style="flex: 1; padding: 12px;">Copy Code</button>
+                <button id="refresh-code-btn" class="btn btn-secondary" style="padding: 12px;">🔄</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unified JS Libraries -->
+    <script src="/static/js/app.js"></script>
+    <script>
+        let currentCode = "";
+        let secondsLeft = 0;
+        let localCountdownInterval = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchActiveCode();
+            
+            // Poll for rotations every 4 seconds
+            setInterval(fetchActiveCode, 4000);
+            
+            // Set up actions
+            document.getElementById('copy-code-btn').onclick = copyCodeToClipboard;
+            document.getElementById('refresh-code-btn').onclick = fetchActiveCode;
+        });
+
+        async function fetchActiveCode() {
+            try {
+                const res = await fetch('/api/public/active-code');
+                if (res.ok) {
+                    const data = await res.json();
+                    
+                    // If code actually changed or initial load, update visual segments
+                    if (data.code !== currentCode) {
+                        currentCode = data.code;
+                        renderOtpSegments(currentCode);
+                    }
+                    
+                    secondsLeft = data.seconds_left;
+                    updateProgressBar();
+                    startLocalCountdown();
+                }
+            } catch (e) {
+                console.error("Error fetching code:", e);
+            }
+        }
+
+        function renderOtpSegments(code) {
+            const wrapper = document.getElementById('otp-boxes-wrapper');
+            let html = "";
+            
+            // Code has structure e.g. "ADM-XXXX"
+            const parts = code.split("-");
+            const prefix = parts[0] || "ADM";
+            const suffix = parts[1] || "WAIT";
+            
+            // Render Prefix
+            for (let char of prefix) {
+                html += `<div class="otp-box">${char}</div>`;
+            }
+            // Render Divider
+            html += `<div class="otp-divider">-</div>`;
+            // Render Suffix
+            for (let char of suffix) {
+                html += `<div class="otp-box" style="box-shadow: 0 4px 12px rgba(0, 113, 227, 0.08); border-color: rgba(0, 113, 227, 0.2);">${char}</div>`;
+            }
+            
+            wrapper.innerHTML = html;
+        }
+
+        function startLocalCountdown() {
+            if (localCountdownInterval) clearInterval(localCountdownInterval);
+            
+            localCountdownInterval = setInterval(() => {
+                if (secondsLeft <= 0) {
+                    clearInterval(localCountdownInterval);
+                    fetchActiveCode();
+                    return;
+                }
+                
+                secondsLeft--;
+                updateProgressBar();
+            }, 1000);
+        }
+
+        function updateProgressBar() {
+            const fill = document.getElementById('timer-progress-fill');
+            const label = document.getElementById('timer-seconds-text');
+            
+            // Max time is 300 seconds (5 minutes)
+            const percent = (secondsLeft / 300) * 100;
+            fill.style.width = `${percent}%`;
+            
+            // Color feedback as time runs out
+            if (secondsLeft < 30) {
+                fill.style.backgroundColor = "var(--system-red)";
+            } else if (secondsLeft < 90) {
+                fill.style.backgroundColor = "var(--system-amber)";
+            } else {
+                fill.style.backgroundColor = "var(--system-blue)";
+            }
+            
+            // Update time label
+            const mins = Math.floor(secondsLeft / 60);
+            const secs = secondsLeft % 60;
+            label.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        async function copyCodeToClipboard() {
+            if (!currentCode) return;
+            try {
+                await navigator.clipboard.writeText(currentCode);
+                showToast(`Copied ${currentCode} to clipboard!`, 'success');
+                playChime(true);
+            } catch (err) {
+                showToast("Failed to copy code", 'error');
+            }
+        }
+    </script>
+
+</body>
+</html>

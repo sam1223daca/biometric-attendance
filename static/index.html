@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biometric Attendance - Dashboard</title>
+    
+    <!-- Unified CSS Design -->
+    <link rel="stylesheet" href="/static/css/style.css?v=1.3">
+    
+    <!-- Leaflet JS Map (CDN) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+</head>
+<body>
+    <div class="bg-blob blob-blue"></div>
+    <div class="bg-blob blob-pink"></div>
+
+    <div class="app-container">
+        <!-- Navigation Header -->
+        <header>
+            <a href="/" class="brand">
+                <div class="brand-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M2 12a10 10 0 0 1 20 0c0 .76-.05 1.52-.16 2.27" />
+                        <path d="M5 12a7 7 0 0 1 14 0c0 1.45-.16 2.9-.48 4.3" />
+                        <path d="M8 12a4 4 0 0 1 8 0c0 2.1-.28 4.2-.82 6.24" />
+                        <path d="M11 12a1 1 0 0 1 2 0c0 2.72-.37 5.43-1.11 8.08" />
+                        <path d="M12 2C6.48 2 2 6.48 2 12" />
+                        <path d="M12 5c-3.87 0-7 3.13-7 7" />
+                        <path d="M12 8c-2.21 0-4 1.79-4 4" />
+                    </svg>
+                </div>
+                <span class="brand-title">PassBiometric</span>
+            </a>
+            
+            <div class="nav-links">
+                <a href="/register" class="btn btn-secondary">Enroll User</a>
+                <a href="/attendance" class="btn btn-primary" id="checkpoint-link">Desktop Checkpoint</a>
+                <a href="/mobile" class="btn btn-primary" id="mobile-quick-check" style="display: none;">Do Attendance</a>
+                <button class="btn btn-secondary" id="admin-login-btn">Admin Portal</button>
+            </div>
+        </header>
+
+        <!-- Stats Container -->
+        <div class="stats-container">
+            <div class="glass-card stat-box">
+                <div class="stat-num" id="total-users-val">0</div>
+                <div class="stat-label">Total Enrolled</div>
+            </div>
+            <div class="glass-card stat-box">
+                <div class="stat-num" id="today-checkins-val" style="color: var(--system-green);">0</div>
+                <div class="stat-label">Check-Ins Today</div>
+            </div>
+            <div class="glass-card stat-box">
+                <div class="stat-num" id="today-checkouts-val" style="color: var(--system-blue);">0</div>
+                <div class="stat-label">Check-Outs Today</div>
+            </div>
+        </div>
+
+        <!-- Main Dashboard Layout Grid -->
+        <div class="grid-dashboard">
+            <!-- Left Panel: Live Feed Logs -->
+            <div class="glass-card logs-panel">
+                <div class="section-title">
+                    <span>Live Attendance Stream</span>
+                    <span style="font-size: 11px; color: var(--text-secondary); font-weight: 500;" id="last-update-time">Updated just now</span>
+                </div>
+                
+                <div class="logs-list-wrapper" id="logs-feed-container">
+                    <!-- Logs list items injected here -->
+                    <div style="text-align: center; color: var(--text-secondary); padding: 40px;" id="no-logs-msg">
+                        Loading attendance logs...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Geolocation Leaflet Map -->
+            <div class="glass-card map-panel">
+                <div class="section-title">
+                    <span>Attendance Check-in Locations</span>
+                </div>
+                <div class="map-container" id="leaflet-map-element"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Panel Control Drawer (Slide up) -->
+    <div class="drawer" id="admin-control-drawer">
+        <div class="drawer-header">
+            <div>
+                <h3 style="font-size: 20px; font-weight: 700; color: var(--text-primary);">Administrative Control Panel</h3>
+                <p style="font-size: 12px; color: var(--text-secondary); font-weight: 500;">Role: Authenticated Administrator</p>
+            </div>
+            <button class="drawer-close" id="drawer-close-btn">&times;</button>
+        </div>
+        
+        <div class="admin-drawer-grid" style="margin-top: 10px;">
+            <!-- Column 1: Authority Access -->
+            <div>
+                <h4 style="font-size: 14px; font-weight: 700; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase;">Authority Access Control</h4>
+                <p style="font-size: 13px; color: var(--text-primary); line-height: 1.4;">
+                    Give this code to new Admin and Teacher registration requests. This code rotates automatically for security.
+                </p>
+                <div class="code-widget" style="margin-top: 15px;">
+                    <div class="code-display" id="rotating-code-val">ADM-WAIT</div>
+                    <div class="code-timer-container" style="width: 100%; margin-top: 12px; padding: 0 4px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin-bottom: 6px; font-weight: 600; color: var(--text-secondary);">
+                            <span>⏱️ Code Expiry Countdown</span>
+                            <span id="code-timer-val" style="font-weight: 700; color: var(--system-blue);">5:00</span>
+                        </div>
+                        <div class="timer-bar-bg" style="width: 100%; height: 6px; background: rgba(0,0,0,0.06); border-radius: 3px; overflow: hidden;">
+                            <div id="code-timer-bar" style="width: 100%; height: 100%; background: linear-gradient(90deg, var(--system-blue) 0%, #00d2ff 100%); border-radius: 3px; transition: width 2s linear, background 0.5s ease; box-shadow: 0 0 8px rgba(0, 113, 227, 0.2);"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Column 2: Pending Approvals -->
+            <div>
+                <h4 style="font-size: 14px; font-weight: 700; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase;">Pending Approvals</h4>
+                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.3;">
+                    New enrollments requiring validation. Approve to grant check-in access.
+                </p>
+                <div id="admin-pending-list" style="max-height: 130px; overflow-y: auto; border: 1px solid rgba(0,0,0,0.08); border-radius: var(--radius-small); padding: 6px; background: rgba(255,255,255,0.4); display: flex; flex-direction: column; gap: 6px;">
+                    <div style="text-align: center; font-size: 11px; color: var(--text-secondary); padding: 10px;">No pending approvals.</div>
+                </div>
+            </div>
+            
+            <!-- Column 3: Enrolled Profiles & Console Control -->
+            <div>
+                <h4 style="font-size: 14px; font-weight: 700; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase;">Enrolled Profiles</h4>
+                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.3;">
+                    Approved user accounts. Deleting wipes credentials.
+                </p>
+                <div id="admin-users-list" style="max-height: 140px; overflow-y: auto; border: 1px solid rgba(0,0,0,0.08); border-radius: var(--radius-small); padding: 6px; background: rgba(255,255,255,0.4); display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;">
+                    <div style="text-align: center; font-size: 11px; color: var(--text-secondary); padding: 10px;">Loading users...</div>
+                </div>
+                <button class="btn btn-secondary btn-danger" id="admin-logout-btn" style="width: 100%; padding: 8px; font-size: 12px;">Lock Console</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance Details Modal (Glassmorphic) -->
+    <div class="modal" id="attendance-details-modal">
+        <div class="modal-content glass-card" style="width: 600px; max-width: 95%;">
+            <button class="modal-close-btn" id="modal-close-btn">&times;</button>
+            <div class="modal-header" style="margin-bottom: 15px;">
+                <h3 style="margin-bottom: 0;">Attendance Log & Location Details</h3>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;" id="modal-grid-layout">
+                <div id="modal-details-body">
+                    <!-- Details dynamically injected -->
+                </div>
+                <div id="modal-map-side" style="display: flex; flex-direction: column; gap: 10px;">
+                    <div id="modal-address-box" style="font-size: 11px; color: var(--text-primary); padding: 10px; background: rgba(0,0,0,0.02); border-radius: var(--radius-small); border-left: 3px solid var(--system-blue); line-height: 1.4; max-height: 80px; overflow-y: auto;">
+                        <strong>📍 Address:</strong> <span id="modal-address-text">Fetching live address...</span>
+                    </div>
+                    <div id="modal-leaflet-map" style="height: 200px; border-radius: var(--radius-medium); border: 1px solid rgba(0,0,0,0.08); background: #eee;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Common and Dashboard Specific JS -->
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/dashboard.js"></script>
+
+</body>
+</html>

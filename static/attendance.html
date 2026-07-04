@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biometric Attendance - Checkpoint Kiosk</title>
+    
+    <!-- Unified CSS Design -->
+    <link rel="stylesheet" href="/static/css/style.css?v=1.3">
+    
+    <!-- Lightweight QR Generator (CDN) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+    <div class="bg-blob blob-blue"></div>
+    <div class="bg-blob blob-pink"></div>
+
+    <div class="app-container" style="max-width: 600px; min-height: 100vh; justify-content: center; padding: 20px 10px;">
+        <header style="margin-bottom: 24px;">
+            <a href="/" class="brand">
+                <div class="brand-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M2 12a10 10 0 0 1 20 0c0 .76-.05 1.52-.16 2.27" />
+                        <path d="M5 12a7 7 0 0 1 14 0c0 1.45-.16 2.9-.48 4.3" />
+                        <path d="M8 12a4 4 0 0 1 8 0c0 2.1-.28 4.2-.82 6.24" />
+                        <path d="M11 12a1 1 0 0 1 2 0c0 2.72-.37 5.43-1.11 8.08" />
+                        <path d="M12 2C6.48 2 2 6.48 2 12" />
+                        <path d="M12 5c-3.87 0-7 3.13-7 7" />
+                        <path d="M12 8c-2.21 0-4 1.79-4 4" />
+                    </svg>
+                </div>
+                <span class="brand-title">Checkpoint Kiosk</span>
+            </a>
+            <a href="/" class="btn btn-secondary" style="padding: 6px 14px; font-size: 13px;">Dashboard</a>
+        </header>
+
+        <!-- QR Display Glass Card -->
+        <div class="glass-card qr-layout">
+            <h2 style="font-size: 22px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px; margin-bottom: 6px;">Biometric Verification</h2>
+            <p style="font-size: 13px; color: var(--text-secondary); max-width: 320px; margin: 0 auto 10px;">
+                Scan with your mobile phone to complete biometric check-in.
+            </p>
+            
+            <!-- QR Box -->
+            <div class="qr-box">
+                <div id="qr-code-element"></div>
+            </div>
+            
+            <!-- Sync Status -->
+            <div class="sync-status">
+                <div class="sync-spinner"></div>
+                <span id="sync-status-text">Generating synchronization link...</span>
+            </div>
+            
+            <div style="margin-top: 30px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 20px; width: 100%;">
+                <p style="font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+                    Ensure your mobile is on the same local network.<br>
+                    Once scanned, your phone's fingerprint reader will verify your details.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Splash Overlay (revealed upon sync verification) -->
+    <div class="success-overlay" id="checkpoint-success-overlay">
+        <div class="success-content">
+            <div class="checkmark-circle">✓</div>
+            <h2 style="font-size: 26px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px; margin-bottom: 6px;">Attendance Verified!</h2>
+            
+            <!-- Display profile photo sent from database (transient display, not logged) -->
+            <div class="success-avatar">
+                <img id="success-user-photo" src="" alt="Verified photo">
+            </div>
+            
+            <h3 id="success-user-name" style="font-size: 20px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Samarshi Dey</h3>
+            <p id="success-user-detail" style="font-size: 13px; color: var(--text-secondary); margin-bottom: 25px;">Role: Employee | Check-in: 10:55 AM</p>
+            
+            <div style="font-size: 12px; color: var(--text-secondary);">Resetting kiosk screen...</div>
+        </div>
+    </div>
+
+    <!-- Unified JS Libraries -->
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/attendance.js"></script>
+
+</body>
+</html>

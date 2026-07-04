@@ -1,0 +1,16 @@
+# Python virtual environments
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+
+# Local database files (contains profile photos and records)
+*.db
+*.sqlite3
+
+# IDEs and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
