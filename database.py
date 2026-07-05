@@ -245,7 +245,23 @@ def get_user_last_log_today(user_id):
     return row["log_type"] if row else None
 
 def add_attendance_log(user_id, role, latitude, longitude):
-    # Determine auto-toggled check-in/check-out type
+    # 1. Fetch user's registered enrollment location for geofence validation
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT name, latitude, longitude FROM users WHERE id = ?", (user_id,))
+    user_record = cursor.fetchone()
+    conn.close()
+
+    if user_record and user_record["latitude"] is not None and user_record["longitude"] is not None:
+        dist_from_enroll = haversine_distance(latitude, longitude, user_record["latitude"], user_record["longitude"])
+        # Threshold: 200 meters (0.2 km)
+        if dist_from_enroll > 0.2:
+            raise ValueError(
+                f"Location verification failed. You are too far from your registered enrollment location "
+                f"(drift: {dist_from_enroll*1000:.0f}m, max allowed: 200m)."
+            )
+
+    # 2. Determine auto-toggled check-in/check-out type
     last_type = get_user_last_log_today(user_id)
     if last_type is None:
         log_type = "Check-In"
@@ -254,25 +270,6 @@ def add_attendance_log(user_id, role, latitude, longitude):
     else:
         # last_type is "Check-Out"
         raise ValueError("Attendance already complete for today.")
-
-    # Enforce same location for Check-Out
-    if log_type == "Check-Out":
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        today_str = datetime.now().strftime("%Y-%m-%d")
-        cursor.execute("""
-            SELECT latitude, longitude FROM attendance_logs 
-            WHERE user_id = ? AND COALESCE(log_type, 'Check-In') = 'Check-In' AND date(timestamp, 'localtime') = ?
-            ORDER BY timestamp ASC LIMIT 1
-        """, (user_id, today_str))
-        first_checkin = cursor.fetchone()
-        conn.close()
-        
-        if first_checkin:
-            dist = haversine_distance(latitude, longitude, first_checkin["latitude"], first_checkin["longitude"])
-            # Threshold: 200 meters (0.2 km)
-            if dist > 0.2:
-                raise ValueError(f"Check-out location mismatch. You checked in at a different location (drift: {dist*1000:.0f}m, max allowed: 200m).")
 
     conn = get_db_connection()
     cursor = conn.cursor()
