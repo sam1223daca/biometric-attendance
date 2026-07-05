@@ -106,6 +106,7 @@ class LoginVerifyRequest(BaseModel):
     is_mock: bool
     latitude: float
     longitude: float
+    photo: Optional[str] = None
 
 class SessionVerifyRequest(BaseModel):
     username: str
@@ -114,6 +115,7 @@ class SessionVerifyRequest(BaseModel):
     credential: Optional[Dict[str, Any]] = None
     challenge: Optional[str] = None
     is_mock: bool
+    photo: Optional[str] = None
 
 class AdminLoginRequest(BaseModel):
     username: str
@@ -589,13 +591,14 @@ def login_verify(req: LoginVerifyRequest, request: Request):
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Biometric Verification failed: {str(e)}")
             
-    # Add to attendance logs (Database stores location + metadata only, NO photo!)
+    # Add to attendance logs
     try:
         database.add_attendance_log(
             user_id=user_id,
             role=role,
             latitude=req.latitude,
-            longitude=req.longitude
+            longitude=req.longitude,
+            photo=req.photo
         )
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
@@ -710,13 +713,14 @@ def verify_sync_session(session_id: str, req: SessionVerifyRequest, request: Req
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Biometric Verification failed: {str(e)}")
             
-    # Add to attendance logs (coordinates and metadata only, NO photo!)
+    # Add to attendance logs
     try:
         database.add_attendance_log(
             user_id=user["id"],
             role=user["role"],
             latitude=req.latitude,
-            longitude=req.longitude
+            longitude=req.longitude,
+            photo=req.photo
         )
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))

@@ -5,6 +5,9 @@ let flowMode = 'direct'; // 'direct' or 'kiosk'
 let sessionId = null;
 let isScanningActive = false;
 
+let mediaStream = null;
+let capturedPhotoBase64 = null;
+
 const badge = document.getElementById('sync-mode-badge');
 const title = document.getElementById('portal-title');
 const usernameField = document.getElementById('username-field');
@@ -14,6 +17,11 @@ const statusLabel = document.getElementById('verification-status-label');
 const bioStatus = document.getElementById('biometric-support-status');
 const gpsStatus = document.getElementById('gps-support-status');
 const successOverlay = document.getElementById('mobile-success-overlay');
+
+const video = document.getElementById('video-stream');
+const canvas = document.getElementById('photo-canvas');
+const preview = document.getElementById('photo-preview');
+const cameraFrame = document.getElementById('camera-frame');
 
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Detect Mode from URL
@@ -30,9 +38,113 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Verify Biometric Support
     checkBiometricSupport();
     
-    // 3. Setup Scan Trigger
+    // 3. Start Camera preview
+    startCamera();
+    
+    // 4. Setup Scan Trigger
     scanBtn.onclick = startVerificationFlow;
+
+    // 5. Setup File Upload fallback trigger
+    const fileInput = document.getElementById('fallback-file-input');
+    cameraFrame.onclick = () => {
+        const overlay = document.getElementById('camera-fallback-overlay');
+        if (overlay && overlay.style.display === 'flex') {
+            fileInput.click();
+        }
+    };
+    fileInput.onchange = handleFallbackFileSelect;
 });
+
+// Camera activation with File Upload fallback for HTTP/non-localhost origins
+async function startCamera() {
+    const fallbackOverlay = document.getElementById('camera-fallback-overlay');
+    if (fallbackOverlay) fallbackOverlay.style.display = 'none';
+    
+    try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error("Camera API not supported on this browser/origin");
+        }
+        
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                width: 300,
+                height: 300,
+                facingMode: 'user'
+            },
+            audio: false
+        });
+        video.srcObject = mediaStream;
+        video.style.display = 'block';
+        preview.style.display = 'none';
+    } catch (e) {
+        console.warn("Camera access failed, activating file upload fallback:", e);
+        video.style.display = 'none';
+        preview.style.display = 'none';
+        if (fallbackOverlay) fallbackOverlay.style.display = 'flex';
+        showToast("Camera blocked. Tap camera box to upload a selfie photo", "info");
+    }
+}
+
+function handleFallbackFileSelect(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        const img = new Image();
+        img.onload = function() {
+            // Draw image on canvas to resize it to 300x300 squares
+            const ctx = canvas.getContext('2d');
+            const minDim = Math.min(img.width, img.height);
+            const sx = (img.width - minDim) / 2;
+            const sy = (img.height - minDim) / 2;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, canvas.width, canvas.height);
+            
+            capturedPhotoBase64 = canvas.toDataURL('image/jpeg', 0.82);
+            
+            preview.src = capturedPhotoBase64;
+            preview.style.display = 'block';
+            const fallbackOverlay = document.getElementById('camera-fallback-overlay');
+            if (fallbackOverlay) fallbackOverlay.style.display = 'none';
+            cameraFrame.classList.add('photo-captured');
+        };
+        img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+// Stop camera tracks
+function stopCamera() {
+    if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        mediaStream = null;
+    }
+}
+
+// Snapshot photo
+function capturePhoto() {
+    // If a fallback photo was already uploaded, do not overwrite it
+    if (cameraFrame.classList.contains('photo-captured') && capturedPhotoBase64) {
+        return;
+    }
+
+    if (!mediaStream) return;
+    
+    const ctx = canvas.getContext('2d');
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // reset
+    
+    capturedPhotoBase64 = canvas.toDataURL('image/jpeg', 0.82);
+    
+    preview.src = capturedPhotoBase64;
+    preview.style.display = 'block';
+    video.style.display = 'none';
+    cameraFrame.classList.add('photo-captured');
+}
 
 function checkBiometricSupport() {
     const isSecure = window.isSecureContext;
@@ -55,6 +167,14 @@ async function startVerificationFlow() {
     if (!username) {
         showToast("Please enter your Username / ID first", "error");
         usernameField.focus();
+        return;
+    }
+
+    // Capture the photo before executing the check!
+    capturePhoto();
+    
+    if (!capturedPhotoBase64) {
+        showToast("Selfie verification photo is required to check in/out", "error");
         return;
     }
     
@@ -96,6 +216,15 @@ function resetVerificationState() {
     isScanningActive = false;
     scanBtn.className = "fingerprint-container";
     statusLabel.textContent = "Tap fingerprint to start Check-In / Out";
+    
+    // Reset camera preview only if not a fallback uploaded photo
+    const fallbackOverlay = document.getElementById('camera-fallback-overlay');
+    if (mediaStream && !(fallbackOverlay && fallbackOverlay.style.display === 'flex')) {
+        preview.style.display = 'none';
+        video.style.display = 'block';
+        cameraFrame.classList.remove('photo-captured');
+        capturedPhotoBase64 = null;
+    }
 }
 
 async function executeBiometricCheck(username, lat, lon) {
@@ -190,7 +319,8 @@ async function submitCheckInData(username, lat, lon, challenge, credential, isMo
                     longitude: lon,
                     challenge,
                     credential,
-                    is_mock: isMock
+                    is_mock: isMock,
+                    photo: capturedPhotoBase64
                 })
             });
         } else {
@@ -203,7 +333,8 @@ async function submitCheckInData(username, lat, lon, challenge, credential, isMo
                     credential,
                     is_mock: isMock,
                     latitude: lat,
-                    longitude: lon
+                    longitude: lon,
+                    photo: capturedPhotoBase64
                 })
             });
         }
@@ -214,6 +345,9 @@ async function submitCheckInData(username, lat, lon, challenge, credential, isMo
             statusLabel.textContent = "Check-In / Out Complete!";
             
             playChime(true);
+            
+            // Stop camera tracking on complete
+            stopCamera();
             
             if (flowMode === 'kiosk') {
                 document.getElementById('success-description-label').textContent = "Attendance verified & synchronized with desktop checkpoint.";

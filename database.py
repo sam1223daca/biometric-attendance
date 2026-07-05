@@ -98,6 +98,12 @@ def init_db():
         cursor.execute("ALTER TABLE attendance_logs ADD COLUMN log_type TEXT DEFAULT 'Check-In';")
     except sqlite3.OperationalError:
         pass
+
+    # Migration to add photo column if it doesn't exist
+    try:
+        cursor.execute("ALTER TABLE attendance_logs ADD COLUMN photo TEXT;")
+    except sqlite3.OperationalError:
+        pass
         
     conn.commit()
     conn.close()
@@ -244,7 +250,7 @@ def get_user_last_log_today(user_id):
     conn.close()
     return row["log_type"] if row else None
 
-def add_attendance_log(user_id, role, latitude, longitude):
+def add_attendance_log(user_id, role, latitude, longitude, photo=None):
     # 1. Fetch user's registered enrollment location for geofence validation
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -274,8 +280,8 @@ def add_attendance_log(user_id, role, latitude, longitude):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO attendance_logs (user_id, role, latitude, longitude, log_type) VALUES (?, ?, ?, ?, ?)",
-        (user_id, role, latitude, longitude, log_type)
+        "INSERT INTO attendance_logs (user_id, role, latitude, longitude, log_type, photo) VALUES (?, ?, ?, ?, ?, ?)",
+        (user_id, role, latitude, longitude, log_type, photo)
     )
     log_id = cursor.lastrowid
     conn.commit()
@@ -341,10 +347,12 @@ def get_attendance_log_details(log_id):
             MAX(l.longitude) AS longitude, 
             MIN(CASE WHEN COALESCE(l.log_type, 'Check-In') = 'Check-In' THEN l.timestamp END) AS timestamp,
             MAX(CASE WHEN l.log_type = 'Check-Out' THEN l.timestamp END) AS check_out_time,
+            MAX(CASE WHEN COALESCE(l.log_type, 'Check-In') = 'Check-In' THEN l.photo END) AS check_in_photo,
+            MAX(CASE WHEN l.log_type = 'Check-Out' THEN l.photo END) AS check_out_photo,
             u.name, 
             u.username, 
             u.department, 
-            u.photo
+            u.photo AS enroll_photo
         FROM attendance_logs l
         JOIN users u ON l.user_id = u.id
         WHERE l.user_id = ? AND date(l.timestamp, 'localtime') = ?

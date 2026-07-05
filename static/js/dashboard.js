@@ -558,9 +558,67 @@ async function showAttendanceDetails(logId) {
             : '';
 
         const bodyContainer = document.getElementById('modal-details-body');
+        const checkInPhotoHTML = details.check_in_photo 
+            ? `<div class="photo-card"><img src="${details.check_in_photo}" alt="Check-In Selfie"><span class="photo-card-label">Check-In Selfie</span></div>`
+            : `<div class="photo-card empty"><div class="empty-photo-icon">📷</div><span class="photo-card-label">No Check-In Selfie</span></div>`;
+
+        const checkOutPhotoHTML = details.check_out_time && details.check_out_photo
+            ? `<div class="photo-card"><img src="${details.check_out_photo}" alt="Check-Out Selfie"><span class="photo-card-label">Check-Out Selfie</span></div>`
+            : `<div class="photo-card empty"><div class="empty-photo-icon">📷</div><span class="photo-card-label">No Check-Out Selfie</span></div>`;
+
+        const enrollPhotoHTML = details.enroll_photo
+            ? `<div class="photo-card"><img src="${details.enroll_photo}" alt="Enrolled Profile"><span class="photo-card-label">Enrolled Profile</span></div>`
+            : `<div class="photo-card empty"><div class="empty-photo-icon">👤</div><span class="photo-card-label">No Profile Photo</span></div>`;
+
         bodyContainer.innerHTML = `
-            <div class="details-photo-container">
-                <img src="${details.photo}" alt="${details.name} profile photo">
+            <style>
+                .photo-comparison-wrapper {
+                    display: flex;
+                    gap: 16px;
+                    justify-content: center;
+                    margin-bottom: 24px;
+                    flex-wrap: wrap;
+                }
+                .photo-card {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 8px;
+                    width: 100px;
+                }
+                .photo-card img {
+                    width: 100px;
+                    height: 100px;
+                    object-fit: cover;
+                    border-radius: 16px;
+                    border: 2px solid rgba(0, 113, 227, 0.1);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+                }
+                .photo-card.empty .empty-photo-icon {
+                    width: 100px;
+                    height: 100px;
+                    border-radius: 16px;
+                    background: rgba(0, 0, 0, 0.03);
+                    border: 2px dashed rgba(0, 0, 0, 0.1);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 26px;
+                    color: var(--text-secondary);
+                }
+                .photo-card-label {
+                    font-size: 9px;
+                    font-weight: 700;
+                    color: var(--text-secondary);
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    text-align: center;
+                }
+            </style>
+            <div class="photo-comparison-wrapper">
+                ${enrollPhotoHTML}
+                ${checkInPhotoHTML}
+                ${checkOutPhotoHTML}
             </div>
             <div class="details-grid">
                 <div class="details-row">
