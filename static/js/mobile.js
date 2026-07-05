@@ -44,18 +44,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // 4. Setup Scan Trigger
     scanBtn.onclick = startVerificationFlow;
 
-    // 5. Setup File Upload fallback trigger
-    const fileInput = document.getElementById('fallback-file-input');
-    cameraFrame.onclick = () => {
-        const overlay = document.getElementById('camera-fallback-overlay');
-        if (overlay && overlay.style.display === 'flex') {
-            fileInput.click();
-        }
-    };
-    fileInput.onchange = handleFallbackFileSelect;
 });
 
-// Camera activation with File Upload fallback for HTTP/non-localhost origins
+// Camera activation
 async function startCamera() {
     const fallbackOverlay = document.getElementById('camera-fallback-overlay');
     if (fallbackOverlay) fallbackOverlay.style.display = 'none';
@@ -77,42 +68,12 @@ async function startCamera() {
         video.style.display = 'block';
         preview.style.display = 'none';
     } catch (e) {
-        console.warn("Camera access failed, activating file upload fallback:", e);
+        console.warn("Camera access failed:", e);
         video.style.display = 'none';
         preview.style.display = 'none';
         if (fallbackOverlay) fallbackOverlay.style.display = 'flex';
-        showToast("Camera blocked. Tap camera box to upload a selfie photo", "info");
+        showToast("Camera access is blocked. Live camera verification is required to log attendance.", "error");
     }
-}
-
-function handleFallbackFileSelect(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = function(event) {
-        const img = new Image();
-        img.onload = function() {
-            // Draw image on canvas to resize it to 300x300 squares
-            const ctx = canvas.getContext('2d');
-            const minDim = Math.min(img.width, img.height);
-            const sx = (img.width - minDim) / 2;
-            const sy = (img.height - minDim) / 2;
-            
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, canvas.width, canvas.height);
-            
-            capturedPhotoBase64 = canvas.toDataURL('image/jpeg', 0.82);
-            
-            preview.src = capturedPhotoBase64;
-            preview.style.display = 'block';
-            const fallbackOverlay = document.getElementById('camera-fallback-overlay');
-            if (fallbackOverlay) fallbackOverlay.style.display = 'none';
-            cameraFrame.classList.add('photo-captured');
-        };
-        img.src = event.target.result;
-    };
-    reader.readAsDataURL(file);
 }
 
 // Stop camera tracks

@@ -23,7 +23,7 @@ This system uses the browser's native Credentials API to record check-in and che
 * **Real-Time WebRTC Camera Stream**: Captures a live selfie snapshot of the user's face at the exact moment of biometric Check-In and Check-Out.
 * **Enrollment Compare Audit**: Saves these selfies in the database logs and displays them side-by-side with the user's original registration photo in the Admin details modal for visual auditing.
 * **Credential Delegation Mitigation**: Prevents "Buddy Punching" attacks where a user registers a friend's fingerprint on their phone and gives it to them to record attendance.
-* **Camera Block Fallback**: If browser camera permissions are blocked, the client dynamically activates a local file upload interface so verification is never locked.
+* **Strict Camera Enforcement**: To prevent users from uploading pre-saved photographs or mock files, local file uploading fallbacks are strictly disabled for verification logs. An active WebRTC camera stream is mandatory to check in or out.
 
 ### 4. Rotating Administrative Access Tokens
 * Admin and Teacher registrations are protected by a dynamic registration code (`ADM-XXXX`).
