@@ -14,8 +14,8 @@ This system uses the browser's native Credentials API to record check-in and che
 * Implements a **signature count check** on the backend to detect and block cloned credentials or replay attacks.
 
 ### 2. Geolocation Drift Lock
-* Stores latitude and longitude coordinates for each check-in and check-out event.
-* **Haversine Distance Restriction**: Enforces a strict **200-meter threshold** between check-in and check-out. If a user attempts to check out from a different location or a spoofed zone, the action is rejected.
+* Stores latitude and longitude coordinates during enrollment and for all check-in/check-out events.
+* **Enrollment-Anchored Geofence**: Enforces a strict **200-meter threshold** between the user's current GPS location and their original **registered enrollment coordinates** for *both* Check-In and Check-Out. If a user attempts to record attendance from a remote area or a spoofed zone, the action is rejected.
 * Uses **Leaflet JS** and **CartoDB Positron** to render interactive maps with custom marker states based on role types.
 * Integrates open-source **OpenStreetMap Nominatim APIs** to perform reverse geocoding, converting coordinates into human-readable street addresses on log inspect.
 
