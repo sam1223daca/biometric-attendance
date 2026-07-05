@@ -19,7 +19,13 @@ This system uses the browser's native Credentials API to record check-in and che
 * Uses **Leaflet JS** and **CartoDB Positron** to render interactive maps with custom marker states based on role types.
 * Integrates open-source **OpenStreetMap Nominatim APIs** to perform reverse geocoding, converting coordinates into human-readable street addresses on log inspect.
 
-### 3. Rotating Administrative Access Tokens
+### 3. Live Selfie Verification (Anti-Cheat Matching)
+* **Real-Time WebRTC Camera Stream**: Captures a live selfie snapshot of the user's face at the exact moment of biometric Check-In and Check-Out.
+* **Enrollment Compare Audit**: Saves these selfies in the database logs and displays them side-by-side with the user's original registration photo in the Admin details modal for visual auditing.
+* **Credential Delegation Mitigation**: Prevents "Buddy Punching" attacks where a user registers a friend's fingerprint on their phone and gives it to them to record attendance.
+* **Camera Block Fallback**: If browser camera permissions are blocked, the client dynamically activates a local file upload interface so verification is never locked.
+
+### 4. Rotating Administrative Access Tokens
 * Admin and Teacher registrations are protected by a dynamic registration code (`ADM-XXXX`).
 * The code **rotates automatically every 5 minutes** for workstation security.
 * The Administrative Control Drawer tracks the countdown timer and displays the active token.
