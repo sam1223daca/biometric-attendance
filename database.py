@@ -104,6 +104,26 @@ def init_db():
         cursor.execute("ALTER TABLE attendance_logs ADD COLUMN photo TEXT;")
     except sqlite3.OperationalError:
         pass
+
+    # Migration to add status column if it doesn't exist
+    try:
+        cursor.execute("ALTER TABLE attendance_logs ADD COLUMN status TEXT DEFAULT 'On Time';")
+    except sqlite3.OperationalError:
+        pass
+
+    # Create Settings Table (Stores check-in/out configurations dynamically)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    );
+    """)
+
+    # Seed default settings values if not existing
+    cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('checkin_start', '10:00')")
+    cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('checkin_end', '11:00')")
+    cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('checkout_start', '13:30')")
+    cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('checkout_end', '14:30')")
         
     conn.commit()
     conn.close()
@@ -277,11 +297,25 @@ def add_attendance_log(user_id, role, latitude, longitude, photo=None):
         # last_type is "Check-Out"
         raise ValueError("Attendance already complete for today.")
 
+    # 3. Check dynamic time restrictions
+    settings = get_settings()
+    current_time_str = datetime.now().strftime("%H:%M")
+    status = "On Time"
+
+    if log_type == "Check-In":
+        if current_time_str < settings["checkin_start"]:
+            raise ValueError(f"Check-In is only available starting at {settings['checkin_start']}.")
+        elif current_time_str > settings["checkin_end"]:
+            status = "Late Arrival"
+    elif log_type == "Check-Out":
+        if current_time_str < settings["checkout_start"] or current_time_str > settings["checkout_end"]:
+            raise ValueError(f"Check-Out is only available between {settings['checkout_start']} and {settings['checkout_end']}.")
+
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO attendance_logs (user_id, role, latitude, longitude, log_type, photo) VALUES (?, ?, ?, ?, ?, ?)",
-        (user_id, role, latitude, longitude, log_type, photo)
+        "INSERT INTO attendance_logs (user_id, role, latitude, longitude, log_type, photo, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (user_id, role, latitude, longitude, log_type, photo, status)
     )
     log_id = cursor.lastrowid
     conn.commit()
@@ -301,6 +335,7 @@ def get_attendance_logs(limit=100):
             MAX(l.longitude) AS longitude, 
             MIN(CASE WHEN COALESCE(l.log_type, 'Check-In') = 'Check-In' THEN l.timestamp END) AS timestamp,
             MAX(CASE WHEN l.log_type = 'Check-Out' THEN l.timestamp END) AS check_out_time,
+            MAX(CASE WHEN COALESCE(l.log_type, 'Check-In') = 'Check-In' THEN l.status END) AS status,
             u.name, 
             u.username, 
             u.department
@@ -349,6 +384,7 @@ def get_attendance_log_details(log_id):
             MAX(CASE WHEN l.log_type = 'Check-Out' THEN l.timestamp END) AS check_out_time,
             MAX(CASE WHEN COALESCE(l.log_type, 'Check-In') = 'Check-In' THEN l.photo END) AS check_in_photo,
             MAX(CASE WHEN l.log_type = 'Check-Out' THEN l.photo END) AS check_out_photo,
+            MAX(CASE WHEN COALESCE(l.log_type, 'Check-In') = 'Check-In' THEN l.status END) AS status,
             u.name, 
             u.username, 
             u.department, 
@@ -439,3 +475,115 @@ def get_dashboard_stats():
         "users_by_role": users_by_role_complete,
         "logs_today_by_role": logs_today_by_role_complete
     }
+
+def get_settings():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT key, value FROM settings")
+    rows = cursor.fetchall()
+    conn.close()
+    return {r["key"]: r["value"] for r in rows}
+
+def update_settings(checkin_start, checkin_end, checkout_start, checkout_end):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE settings SET value = ? WHERE key = 'checkin_start'", (checkin_start,))
+    cursor.execute("UPDATE settings SET value = ? WHERE key = 'checkin_end'", (checkin_end,))
+    cursor.execute("UPDATE settings SET value = ? WHERE key = 'checkout_start'", (checkout_start,))
+    cursor.execute("UPDATE settings SET value = ? WHERE key = 'checkout_end'", (checkout_end,))
+    conn.commit()
+    conn.close()
+
+def get_classes_count_since(start_date):
+    import datetime
+    now = datetime.datetime.now().date()
+    if isinstance(start_date, str):
+        try:
+            start_date = datetime.datetime.strptime(start_date.split()[0], "%Y-%m-%d").date()
+        except Exception:
+            start_date = now
+    
+    if start_date > now:
+        return 0
+        
+    classes = 0
+    curr = start_date
+    while curr <= now:
+        if curr.weekday() < 5:  # Monday = 0, Friday = 4
+            classes += 1
+        curr += datetime.timedelta(days=1)
+    return max(1, classes)
+
+def get_student_summary(user_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT created_at, name, username, role, department, photo FROM users WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
+    if not user:
+        conn.close()
+        return None
+        
+    created_at = user["created_at"]
+    
+    cursor.execute("""
+        SELECT COUNT(DISTINCT date(timestamp, 'localtime')) 
+        FROM attendance_logs 
+        WHERE user_id = ?
+    """, (user_id,))
+    present = cursor.fetchone()[0]
+    
+    cursor.execute("""
+        SELECT COUNT(DISTINCT date(timestamp, 'localtime')) 
+        FROM attendance_logs 
+        WHERE user_id = ? AND status = 'Late Arrival'
+    """, (user_id,))
+    late = cursor.fetchone()[0]
+    
+    conn.close()
+    
+    total_classes = get_classes_count_since(created_at)
+    absent = max(0, total_classes - present)
+    percent = round((present / total_classes) * 100, 2) if total_classes > 0 else 100.0
+    
+    return {
+        "name": user["name"],
+        "username": user["username"],
+        "role": user["role"],
+        "department": user["department"],
+        "photo": user["photo"],
+        "total_classes": total_classes,
+        "present": present,
+        "absent": absent,
+        "late": late,
+        "percentage": percent
+    }
+
+def get_student_timeline(user_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT 
+            MAX(l.id) AS id,
+            date(l.timestamp, 'localtime') as log_date,
+            MIN(CASE WHEN COALESCE(l.log_type, 'Check-In') = 'Check-In' THEN l.timestamp END) AS check_in_time,
+            MAX(CASE WHEN l.log_type = 'Check-Out' THEN l.timestamp END) AS check_out_time,
+            MAX(CASE WHEN COALESCE(l.log_type, 'Check-In') = 'Check-In' THEN l.status END) AS status,
+            MAX(CASE WHEN COALESCE(l.log_type, 'Check-In') = 'Check-In' THEN l.photo END) AS check_in_photo,
+            MAX(CASE WHEN l.log_type = 'Check-Out' THEN l.photo END) AS check_out_photo
+        FROM attendance_logs l
+        WHERE l.user_id = ?
+        GROUP BY date(l.timestamp, 'localtime')
+        ORDER BY log_date DESC
+    """, (user_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    
+    timeline = []
+    for r in rows:
+        d = dict(r)
+        if d.get("check_in_time") and not d["check_in_time"].endswith("Z"):
+            d["check_in_time"] = d["check_in_time"].replace(" ", "T") + "Z"
+        if d.get("check_out_time") and not d["check_out_time"].endswith("Z"):
+            d["check_out_time"] = d["check_out_time"].replace(" ", "T") + "Z"
+        timeline.append(d)
+    return timeline

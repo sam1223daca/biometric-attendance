@@ -267,6 +267,12 @@ function setupAdminDrawer() {
     const closeBtn = document.getElementById('drawer-close-btn');
     const logoutBtn = document.getElementById('admin-logout-btn');
     
+    // Bind Save Settings button
+    const saveSettingsBtn = document.getElementById('save-settings-btn');
+    if (saveSettingsBtn) {
+        saveSettingsBtn.onclick = saveSettings;
+    }
+    
     // Open drawer
     openBtn.onclick = async () => {
         if (adminToken) {
@@ -274,6 +280,7 @@ function setupAdminDrawer() {
             drawer.classList.add('active');
             startAuthorityCodeLoop();
             refreshAdminUsersList();
+            loadSettings();
             resetInactivityTimer();
         } else {
             // Initiate Admin Biometric Login flow
@@ -381,6 +388,7 @@ async function performAdminBiometricLogin(username) {
                     document.getElementById('admin-control-drawer').classList.add('active');
                     startAuthorityCodeLoop();
                     refreshAdminUsersList();
+                    loadSettings();
                     loadDashboardData();
                     resetInactivityTimer();
                 } else {
@@ -444,6 +452,7 @@ async function performAdminBiometricLogin(username) {
                 document.getElementById('admin-control-drawer').classList.add('active');
                 startAuthorityCodeLoop();
                 refreshAdminUsersList();
+                loadSettings();
                 loadDashboardData();
                 resetInactivityTimer();
             } else {
@@ -787,8 +796,9 @@ async function refreshAdminUsersList() {
                         <div style="font-size:10px; color:var(--text-secondary); text-overflow:ellipsis; overflow:hidden; white-space:nowrap; margin-top:2px;">ID: ${user.username}</div>
                         ${deptText}
                     </div>
-                    <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
-                        <button class="log-delete-btn" onclick="deleteUserAccount(${user.id}, '${user.name.replace(/'/g, "\\'")}')" title="Delete User account" style="padding:4px 8px; font-size:10px;">✕</button>
+                    <div style="display:flex; align-items:center; gap:4px; flex-shrink:0;">
+                        <button class="btn btn-secondary" onclick="window.open('/student?id=${user.id}', '_blank')" title="View Student Dashboard" style="padding:4px 6px; font-size:10px; line-height:1; min-width:unset; margin:0; width:auto; display:inline-flex; align-items:center;">👤</button>
+                        <button class="log-delete-btn" onclick="deleteUserAccount(${user.id}, '${user.name.replace(/'/g, "\\'")}')" title="Delete User account" style="padding:4px 8px; font-size:10px; margin:0;">✕</button>
                     </div>
                 </div>
             `;
@@ -1065,3 +1075,57 @@ function autoLockConsole() {
 ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(eventName => {
     document.addEventListener(eventName, resetInactivityTimer, { passive: true });
 });
+
+async function loadSettings() {
+    try {
+        const res = await fetch('/api/admin/settings', {
+            headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
+        if (!res.ok) return;
+        const settings = await res.json();
+        if (settings.checkin_start) document.getElementById('settings-checkin-start').value = settings.checkin_start;
+        if (settings.checkin_end) document.getElementById('settings-checkin-end').value = settings.checkin_end;
+        if (settings.checkout_start) document.getElementById('settings-checkout-start').value = settings.checkout_start;
+        if (settings.checkout_end) document.getElementById('settings-checkout-end').value = settings.checkout_end;
+    } catch (e) {
+        console.error("Error loading settings:", e);
+    }
+}
+
+async function saveSettings() {
+    const checkin_start = document.getElementById('settings-checkin-start').value;
+    const checkin_end = document.getElementById('settings-checkin-end').value;
+    const checkout_start = document.getElementById('settings-checkout-start').value;
+    const checkout_end = document.getElementById('settings-checkout-end').value;
+    
+    if (!checkin_start || !checkin_end || !checkout_start || !checkout_end) {
+        showToast("All settings fields are required", "error");
+        return;
+    }
+    
+    try {
+        const res = await fetch('/api/admin/settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${adminToken}`
+            },
+            body: JSON.stringify({
+                checkin_start,
+                checkin_end,
+                checkout_start,
+                checkout_end
+            })
+        });
+        
+        if (res.ok) {
+            showToast("Schedule settings saved successfully", "success");
+        } else {
+            const err = await res.json();
+            showToast(`Failed to save settings: ${err.detail}`, "error");
+        }
+    } catch (e) {
+        console.error("Error saving settings:", e);
+        showToast("Error connecting to settings API", "error");
+    }
+}

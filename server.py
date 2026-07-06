@@ -155,6 +155,10 @@ def get_attendance():
 def get_mobile():
     return FileResponse("static/mobile.html")
 
+@app.get("/student", response_class=HTMLResponse)
+def get_student():
+    return FileResponse("static/student.html")
+
 
 # ---------------- WEBAUTHN REGISTRATION APIS ----------------
 
@@ -859,6 +863,50 @@ def get_authority_timer():
     """Public helper to get rotating code expiration remaining (doesn't leak code itself)."""
     _, seconds_left = security.get_current_authority_code()
     return {"seconds_left": seconds_left}
+
+
+class SettingsUpdateRequest(BaseModel):
+    checkin_start: str
+    checkin_end: str
+    checkout_start: str
+    checkout_end: str
+
+@app.get("/api/admin/settings")
+def get_admin_settings(token: str = Depends(get_admin_token)):
+    """Retrieve schedule windows (Requires Admin token)."""
+    return database.get_settings()
+
+@app.post("/api/admin/settings")
+def update_admin_settings(req: SettingsUpdateRequest, token: str = Depends(get_admin_token)):
+    """Update schedule windows (Requires Admin token)."""
+    for val in [req.checkin_start, req.checkin_end, req.checkout_start, req.checkout_end]:
+        parts = val.split(":")
+        if len(parts) != 2 or not parts[0].isdigit() or not parts[1].isdigit():
+            raise HTTPException(status_code=400, detail="Invalid time format. Use HH:MM")
+    database.update_settings(
+        req.checkin_start,
+        req.checkin_end,
+        req.checkout_start,
+        req.checkout_end
+    )
+    return {"success": True}
+
+@app.get("/api/public/settings")
+def get_public_settings():
+    """Retrieve schedule windows for public UI visibility (No auth required)."""
+    return database.get_settings()
+
+@app.get("/api/student/{user_id}/dashboard-data")
+def get_student_dashboard_data(user_id: int):
+    """Retrieve profile summary and date-wise timeline logs for a specific student."""
+    summary = database.get_student_summary(user_id)
+    if not summary:
+        raise HTTPException(status_code=404, detail="Student record not found")
+    timeline = database.get_student_timeline(user_id)
+    return {
+        "summary": summary,
+        "timeline": timeline
+    }
 
 
 # ---------------- UTILS ----------------
