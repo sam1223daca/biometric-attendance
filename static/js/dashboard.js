@@ -1278,123 +1278,24 @@ function renderReportsTable(showToastOnFilter = false) {
 
 function exportReport(format) {
     const dateVal = document.getElementById('filter-date').value;
-    const deptVal = document.getElementById('filter-dept').value.toLowerCase().trim();
-    const studentVal = document.getElementById('filter-student').value.toLowerCase().trim();
+    const deptVal = document.getElementById('filter-dept').value.trim();
+    const studentVal = document.getElementById('filter-student').value.trim();
     const statusVal = document.getElementById('filter-status').value;
     
-    let filtered = [...allLogs];
+    // Create direct URL redirection to backend export API
+    const params = new URLSearchParams({
+        format: format
+    });
+    if (dateVal) params.append('date', dateVal);
+    if (deptVal) params.append('dept', deptVal);
+    if (studentVal) params.append('student', studentVal);
+    if (statusVal && statusVal !== 'All') params.append('status', statusVal);
     
-    if (dateVal) {
-        filtered = filtered.filter(log => {
-            if (!log.timestamp) return false;
-            const logDate = new Date(log.timestamp).toISOString().split('T')[0];
-            return logDate === dateVal;
-        });
-    }
-    if (deptVal) {
-        filtered = filtered.filter(log => log.department && log.department.toLowerCase().includes(deptVal));
-    }
-    if (studentVal) {
-        filtered = filtered.filter(log => {
-            const matchName = log.name && log.name.toLowerCase().includes(studentVal);
-            const matchUsername = log.username && log.username.toLowerCase().includes(studentVal);
-            return matchName || matchUsername;
-        });
-    }
-    if (statusVal !== 'All') {
-        filtered = filtered.filter(log => log.status === statusVal);
-    }
+    const exportUrl = `/api/admin/export?${params.toString()}`;
     
-    if (filtered.length === 0) {
-        showToast("No data available to export", "error");
-        return;
-    }
-    
-    if (format === 'csv' || format === 'excel') {
-        let csvContent = "Student Name,Username/ID,Department,Role,Date,Check-In,Check-Out,Hours Worked,Status\n";
-        filtered.forEach(log => {
-            const checkIn = log.timestamp ? new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
-            const checkOut = log.check_out_time ? new Date(log.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
-            const date = log.timestamp ? new Date(log.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '--';
-            const hours = calculateHoursDiff(log.timestamp, log.check_out_time);
-            
-            csvContent += `"${log.name}","${log.username}","${log.department || 'General'}","${log.role}","${date}","${checkIn}","${checkOut}","${hours}","${log.status}"\n`;
-        });
-        
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", `Attendance_Report_${new Date().toISOString().split('T')[0]}.${format === 'csv' ? 'csv' : 'csv'}`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        showToast(`Report exported successfully as ${format.toUpperCase()}`, "success");
-    } else if (format === 'pdf') {
-        const printWindow = window.open('', '_blank');
-        let tableRows = '';
-        filtered.forEach(log => {
-            const checkIn = log.timestamp ? new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
-            const checkOut = log.check_out_time ? new Date(log.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
-            const date = log.timestamp ? new Date(log.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '--';
-            const hours = calculateHoursDiff(log.timestamp, log.check_out_time);
-            tableRows += `
-                <tr style="border-bottom: 1px solid #ddd;">
-                    <td style="padding: 10px; border-bottom: 1px solid #ddd;">${log.name} (${log.username})</td>
-                    <td style="padding: 10px; border-bottom: 1px solid #ddd;">${log.department || 'General'}</td>
-                    <td style="padding: 10px; border-bottom: 1px solid #ddd;">${date}</td>
-                    <td style="padding: 10px; border-bottom: 1px solid #ddd;">${checkIn}</td>
-                    <td style="padding: 10px; border-bottom: 1px solid #ddd;">${checkOut}</td>
-                    <td style="padding: 10px; border-bottom: 1px solid #ddd;">${hours}</td>
-                    <td style="padding: 10px; border-bottom: 1px solid #ddd; font-weight: 700; color: ${log.status === 'Late Arrival' ? '#ff9500' : '#34c759'};">${log.status}</td>
-                </tr>
-            `;
-        });
-        
-        printWindow.document.write(`
-            <html>
-            <head>
-                <title>Attendance Report Ledger</title>
-                <style>
-                    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px; color: #333; }
-                    h2 { margin-bottom: 5px; font-weight: 700; }
-                    p { color: #666; font-size: 14px; margin-bottom: 30px; }
-                    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
-                    th { padding: 12px 10px; font-weight: 700; color: #555; background: #f5f5f7; border-bottom: 2px solid #ddd; }
-                </style>
-            </head>
-            <body>
-                <h2>PassBiometric Attendance Ledger</h2>
-                <p>Generated: ${new Date().toLocaleString()} | Filtered records: ${filtered.length}</p>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>STUDENT</th>
-                            <th>DEPARTMENT</th>
-                            <th>DATE</th>
-                            <th>CHECK-IN</th>
-                            <th>CHECK-OUT</th>
-                            <th>HOURS</th>
-                            <th>STATUS</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${tableRows}
-                    </tbody>
-                </table>
-                <script>
-                    window.onload = function() {
-                        window.print();
-                        window.close();
-                    }
-                </script>
-            </body>
-            </html>
-        `);
-        printWindow.document.close();
-        showToast("PDF Print dialogue initialized", "success");
-    }
+    // Open in new window or start file download natively
+    window.open(exportUrl, '_blank');
+    showToast(`Export request initiated for ${format.toUpperCase()}`, "info");
 }
 
 function calculateHoursDiff(checkIn, checkOut) {

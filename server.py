@@ -5,7 +5,7 @@ import time
 import uuid
 import secrets
 from typing import Optional, Dict, Any
-from fastapi import FastAPI, Request, HTTPException, Depends, Header
+from fastapi import FastAPI, Request, HTTPException, Depends, Header, Response
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -919,6 +919,173 @@ def get_user_by_username(username: str):
     if not row:
         raise HTTPException(status_code=404, detail="Username not found")
     return {"id": row["id"]}
+
+
+@app.get("/api/admin/export")
+def export_logs(
+    date: Optional[str] = None,
+    dept: Optional[str] = None,
+    student: Optional[str] = None,
+    status: Optional[str] = None,
+    format: str = "csv"
+):
+    from datetime import datetime
+    # Fetch logs from database
+    logs = database.get_attendance_logs(limit=1000)
+    
+    # Apply filtering in Python
+    filtered = []
+    for log in logs:
+        # Date filter
+        if date:
+            log_date = log["timestamp"][:10] if log.get("timestamp") else ""
+            if log_date != date:
+                continue
+                
+        # Dept filter
+        if dept:
+            log_dept = log.get("department") or "General"
+            if dept.lower() not in log_dept.lower():
+                continue
+                
+        # Student filter
+        if student:
+            log_name = log.get("name") or ""
+            log_username = log.get("username") or ""
+            if student.lower() not in log_name.lower() and student.lower() not in log_username.lower():
+                continue
+                
+        # Status filter
+        if status and status != "All":
+            if log.get("status") != status:
+                continue
+                
+        filtered.append(log)
+        
+    if format in ["csv", "excel"]:
+        csv_data = "Student Name,Username/ID,Department,Role,Date,Check-In,Check-Out,Hours Worked,Status\n"
+        for log in filtered:
+            check_in = ""
+            if log.get("timestamp"):
+                try:
+                    check_in = log["timestamp"][11:16]
+                except Exception:
+                    check_in = "--:--"
+            check_out = ""
+            if log.get("check_out_time"):
+                try:
+                    check_out = log["check_out_time"][11:16]
+                except Exception:
+                    check_out = "--:--"
+            log_date = log["timestamp"][:10] if log.get("timestamp") else "--"
+            
+            hours = "-"
+            if log.get("timestamp") and log.get("check_out_time"):
+                try:
+                    t1 = datetime.fromisoformat(log["timestamp"].replace("Z", ""))
+                    t2 = datetime.fromisoformat(log["check_out_time"].replace("Z", ""))
+                    diff = t2 - t1
+                    total_seconds = int(diff.total_seconds())
+                    if total_seconds > 0:
+                        hrs = total_seconds // 3600
+                        mins = (total_seconds % 3600) // 60
+                        hours = f"{hrs}h {mins}m"
+                except Exception:
+                    pass
+                    
+            status_str = log.get("status") or "On Time"
+            csv_data += f'"{log.get("name")}","{log.get("username")}","{log.get("department") or "General"}","{log.get("role")}","{log_date}","{check_in}","{check_out}","{hours}","{status_str}"\n'
+            
+        filename = f"attendance_report_{datetime.now().strftime('%Y-%m-%d')}.csv"
+        return Response(
+            content=csv_data.encode("utf-8-sig"),
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "Cache-Control": "no-cache"
+            }
+        )
+        
+    elif format == "pdf":
+        table_rows = ""
+        for log in filtered:
+            check_in = log["timestamp"][11:16] if log.get("timestamp") else "--:--"
+            check_out = log["check_out_time"][11:16] if log.get("check_out_time") else "--:--"
+            log_date = log["timestamp"][:10] if log.get("timestamp") else "--"
+            
+            hours = "-"
+            if log.get("timestamp") and log.get("check_out_time"):
+                try:
+                    t1 = datetime.fromisoformat(log["timestamp"].replace("Z", ""))
+                    t2 = datetime.fromisoformat(log["check_out_time"].replace("Z", ""))
+                    diff = t2 - t1
+                    total_seconds = int(diff.total_seconds())
+                    if total_seconds > 0:
+                        hrs = total_seconds // 3600
+                        mins = (total_seconds % 3600) // 60
+                        hours = f"{hrs}h {mins}m"
+                except Exception:
+                    pass
+            status_str = log.get("status") or "On Time"
+            color = "#ff9500" if status_str == "Late Arrival" else "#34c759"
+            table_rows += f"""
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td style="padding: 10px; border-bottom: 1px solid #ddd;">{log.get('name')} ({log.get('username')})</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #ddd;">{log.get('department') or 'General'}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #ddd;">{log_date}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #ddd;">{check_in}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #ddd;">{check_out}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #ddd;">{hours}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #ddd; font-weight: 700; color: {color};">{status_str}</td>
+                </tr>
+            """
+            
+        html_content = f"""
+            <html>
+            <head>
+                <title>Attendance Report Ledger</title>
+                <style>
+                    body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px; color: #333; }}
+                    h2 {{ margin-bottom: 5px; font-weight: 700; }}
+                    p {{ color: #666; font-size: 14px; margin-bottom: 30px; }}
+                    table {{ width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }}
+                    th {{ padding: 12px 10px; font-weight: 700; color: #555; background: #f5f5f7; border-bottom: 2px solid #ddd; }}
+                </style>
+            </head>
+            <body>
+                <h2>PassBiometric Attendance Ledger</h2>
+                <p>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Filtered records: {len(filtered)}</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>STUDENT</th>
+                            <th>DEPARTMENT</th>
+                            <th>DATE</th>
+                            <th>CHECK-IN</th>
+                            <th>CHECK-OUT</th>
+                            <th>HOURS</th>
+                            <th>STATUS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {table_rows}
+                    </tbody>
+                </table>
+                <script>
+                    window.onload = function() {{
+                        window.print();
+                    }}
+                </script>
+            </body>
+            </html>
+        """
+        return Response(
+            content=html_content.encode("utf-8"),
+            media_type="text/html",
+            headers={
+                "Cache-Control": "no-cache"
+            }
+        )
 
 
 # ---------------- UTILS ----------------
