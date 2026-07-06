@@ -146,7 +146,7 @@ function renderTimeline(logs) {
         // Status badge
         let statusBadge = '';
         if (log.status === 'Late Arrival') {
-            statusBadge = '<span class="log-badge badge-teacher" style="font-size: 10px; padding: 2px 8px; font-weight: 700;">LATE</span>';
+            statusBadge = '<span class="log-badge" style="font-size: 10px; padding: 2px 8px; font-weight: 700; background: rgba(255, 149, 0, 0.15); color: #ff9500; border: 1.5px solid rgba(255, 149, 0, 0.25); border-radius: 6px; text-transform: uppercase;">LATE</span>';
         } else {
             statusBadge = '<span class="log-badge badge-approved" style="font-size: 10px; padding: 2px 8px; font-weight: 700;">PRESENT</span>';
         }

@@ -88,15 +88,10 @@ async function loadDashboardData() {
             renderLogsList(allLogs);
             updateMapMarkers(allLogs);
             
-            // Toggle admin reports view dynamically
+            // Refresh advanced reports table unconditionally
             const reportsSection = document.getElementById('admin-reports-section');
             if (reportsSection) {
-                if (adminToken) {
-                    reportsSection.style.display = 'block';
-                    renderReportsTable();
-                } else {
-                    reportsSection.style.display = 'none';
-                }
+                renderReportsTable();
             }
         }
         
@@ -1255,9 +1250,8 @@ function renderReportsTable(showToastOnFilter = false) {
             
         const hoursDiff = calculateHoursDiff(log.timestamp, log.check_out_time);
         
-        let statusBadge = '';
         if (log.status === 'Late Arrival') {
-            statusBadge = '<span class="log-badge badge-teacher" style="font-size: 8px; padding: 2px 6px; font-weight:700;">LATE ARRIVAL</span>';
+            statusBadge = '<span class="log-badge" style="font-size: 8px; padding: 2px 6px; font-weight:700; background: rgba(255, 149, 0, 0.15); color: #ff9500; border: 1px solid rgba(255, 149, 0, 0.25); border-radius: 4px; text-transform: uppercase;">LATE ARRIVAL</span>';
         } else {
             statusBadge = '<span class="log-badge badge-approved" style="font-size: 8px; padding: 2px 6px; font-weight:700;">ON TIME</span>';
         }
