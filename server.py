@@ -908,6 +908,18 @@ def get_student_dashboard_data(user_id: int):
         "timeline": timeline
     }
 
+@app.get("/api/users/by-username/{username}")
+def get_user_by_username(username: str):
+    """Public helper to resolve a username to its student user ID."""
+    conn = database.get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Username not found")
+    return {"id": row["id"]}
+
 
 # ---------------- UTILS ----------------
 

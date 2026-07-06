@@ -6,6 +6,7 @@ let markersLayer;
 let detailsMapInstance = null;
 let adminToken = localStorage.getItem('admin_token');
 let codeTimerInterval = null;
+let allLogs = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Viewport Check
@@ -22,6 +23,19 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 4. Admin Portal Drawer Trigger
     setupAdminDrawer();
+
+    // 5. Student Portal Redirect Bind
+    const studentBtn = document.getElementById('student-portal-btn');
+    if (studentBtn) {
+        studentBtn.onclick = () => {
+            const username = prompt("Enter Student Username / ID:");
+            if (!username) return;
+            resolveStudentUsername(username.trim());
+        };
+    }
+
+    // 6. Setup Admin Reports UI
+    setupAdminReports();
 });
 
 // Device viewport adjust
@@ -70,9 +84,20 @@ async function loadDashboardData() {
         // Load logs
         const logsRes = await fetch('/api/dashboard/logs');
         if (logsRes.ok) {
-            const logs = await logsRes.json();
-            renderLogsList(logs);
-            updateMapMarkers(logs);
+            allLogs = await logsRes.json();
+            renderLogsList(allLogs);
+            updateMapMarkers(allLogs);
+            
+            // Toggle admin reports view dynamically
+            const reportsSection = document.getElementById('admin-reports-section');
+            if (reportsSection) {
+                if (adminToken) {
+                    reportsSection.style.display = 'block';
+                    renderReportsTable();
+                } else {
+                    reportsSection.style.display = 'none';
+                }
+            }
         }
         
         document.getElementById('last-update-time').textContent = `Updated ${new Date().toLocaleTimeString()}`;
@@ -1128,4 +1153,264 @@ async function saveSettings() {
         console.error("Error saving settings:", e);
         showToast("Error connecting to settings API", "error");
     }
+}
+
+async function resolveStudentUsername(username) {
+    try {
+        const res = await fetch(`/api/users/by-username/${encodeURIComponent(username)}`);
+        if (!res.ok) {
+            showToast("Username not found. Check ID and try again.", "error");
+            return;
+        }
+        const data = await res.json();
+        window.open(`/student?id=${data.id}`, '_blank');
+    } catch (e) {
+        console.error(e);
+        showToast("Error resolving student details", "error");
+    }
+}
+
+function setupAdminReports() {
+    const filterBtn = document.getElementById('btn-filter-reports');
+    const resetBtn = document.getElementById('btn-reset-reports');
+    const csvBtn = document.getElementById('export-csv-btn');
+    const excelBtn = document.getElementById('export-excel-btn');
+    const pdfBtn = document.getElementById('export-pdf-btn');
+    
+    if (filterBtn) filterBtn.onclick = () => renderReportsTable(true);
+    if (resetBtn) {
+        resetBtn.onclick = () => {
+            document.getElementById('filter-date').value = '';
+            document.getElementById('filter-dept').value = '';
+            document.getElementById('filter-student').value = '';
+            document.getElementById('filter-status').value = 'All';
+            renderReportsTable(true);
+        };
+    }
+    
+    if (csvBtn) csvBtn.onclick = () => exportReport('csv');
+    if (excelBtn) excelBtn.onclick = () => exportReport('excel');
+    if (pdfBtn) pdfBtn.onclick = () => exportReport('pdf');
+}
+
+function renderReportsTable(showToastOnFilter = false) {
+    const dateVal = document.getElementById('filter-date').value;
+    const deptVal = document.getElementById('filter-dept').value.toLowerCase().trim();
+    const studentVal = document.getElementById('filter-student').value.toLowerCase().trim();
+    const statusVal = document.getElementById('filter-status').value;
+    
+    let filtered = [...allLogs];
+    
+    if (dateVal) {
+        filtered = filtered.filter(log => {
+            if (!log.timestamp) return false;
+            const logDate = new Date(log.timestamp).toISOString().split('T')[0];
+            return logDate === dateVal;
+        });
+    }
+    
+    if (deptVal) {
+        filtered = filtered.filter(log => log.department && log.department.toLowerCase().includes(deptVal));
+    }
+    
+    if (studentVal) {
+        filtered = filtered.filter(log => {
+            const matchName = log.name && log.name.toLowerCase().includes(studentVal);
+            const matchUsername = log.username && log.username.toLowerCase().includes(studentVal);
+            return matchName || matchUsername;
+        });
+    }
+    
+    if (statusVal !== 'All') {
+        filtered = filtered.filter(log => log.status === statusVal);
+    }
+    
+    document.getElementById('reports-count-badge').textContent = `${filtered.length} records`;
+    
+    const tbody = document.getElementById('reports-table-body');
+    if (filtered.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 30px;">
+                    No report logs match the active filters.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    let html = '';
+    filtered.forEach(log => {
+        const checkInStr = log.timestamp 
+            ? new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : '--:--';
+            
+        const checkOutStr = log.check_out_time
+            ? new Date(log.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : '--:--';
+            
+        const dateStr = log.timestamp
+            ? new Date(log.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+            : '--';
+            
+        const hoursDiff = calculateHoursDiff(log.timestamp, log.check_out_time);
+        
+        let statusBadge = '';
+        if (log.status === 'Late Arrival') {
+            statusBadge = '<span class="log-badge badge-teacher" style="font-size: 8px; padding: 2px 6px; font-weight:700;">LATE ARRIVAL</span>';
+        } else {
+            statusBadge = '<span class="log-badge badge-approved" style="font-size: 8px; padding: 2px 6px; font-weight:700;">ON TIME</span>';
+        }
+        
+        html += `
+            <tr style="border-bottom: 1px solid rgba(0,0,0,0.04); background: rgba(255,255,255,0.4);">
+                <td style="padding: 10px 16px; font-weight: 600; color: var(--text-primary);">${log.name} <span style="font-size:10px; color:var(--text-secondary); font-weight:500;">(${log.username})</span></td>
+                <td style="padding: 10px 16px; color: var(--text-secondary);">${log.department || 'General'}</td>
+                <td style="padding: 10px 16px; color: var(--text-primary);">${dateStr}</td>
+                <td style="padding: 10px 16px; color: var(--text-primary);">${checkInStr}</td>
+                <td style="padding: 10px 16px; color: var(--text-primary);">${checkOutStr}</td>
+                <td style="padding: 10px 16px; font-weight: 600; color: var(--text-secondary);">${hoursDiff}</td>
+                <td style="padding: 10px 16px;">${statusBadge}</td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+    
+    if (showToastOnFilter) {
+        showToast(`Filtered down to ${filtered.length} logs`, "info");
+    }
+}
+
+function exportReport(format) {
+    const dateVal = document.getElementById('filter-date').value;
+    const deptVal = document.getElementById('filter-dept').value.toLowerCase().trim();
+    const studentVal = document.getElementById('filter-student').value.toLowerCase().trim();
+    const statusVal = document.getElementById('filter-status').value;
+    
+    let filtered = [...allLogs];
+    
+    if (dateVal) {
+        filtered = filtered.filter(log => {
+            if (!log.timestamp) return false;
+            const logDate = new Date(log.timestamp).toISOString().split('T')[0];
+            return logDate === dateVal;
+        });
+    }
+    if (deptVal) {
+        filtered = filtered.filter(log => log.department && log.department.toLowerCase().includes(deptVal));
+    }
+    if (studentVal) {
+        filtered = filtered.filter(log => {
+            const matchName = log.name && log.name.toLowerCase().includes(studentVal);
+            const matchUsername = log.username && log.username.toLowerCase().includes(studentVal);
+            return matchName || matchUsername;
+        });
+    }
+    if (statusVal !== 'All') {
+        filtered = filtered.filter(log => log.status === statusVal);
+    }
+    
+    if (filtered.length === 0) {
+        showToast("No data available to export", "error");
+        return;
+    }
+    
+    if (format === 'csv' || format === 'excel') {
+        let csvContent = "Student Name,Username/ID,Department,Role,Date,Check-In,Check-Out,Hours Worked,Status\n";
+        filtered.forEach(log => {
+            const checkIn = log.timestamp ? new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
+            const checkOut = log.check_out_time ? new Date(log.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
+            const date = log.timestamp ? new Date(log.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '--';
+            const hours = calculateHoursDiff(log.timestamp, log.check_out_time);
+            
+            csvContent += `"${log.name}","${log.username}","${log.department || 'General'}","${log.role}","${date}","${checkIn}","${checkOut}","${hours}","${log.status}"\n`;
+        });
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Attendance_Report_${new Date().toISOString().split('T')[0]}.${format === 'csv' ? 'csv' : 'csv'}`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast(`Report exported successfully as ${format.toUpperCase()}`, "success");
+    } else if (format === 'pdf') {
+        const printWindow = window.open('', '_blank');
+        let tableRows = '';
+        filtered.forEach(log => {
+            const checkIn = log.timestamp ? new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
+            const checkOut = log.check_out_time ? new Date(log.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
+            const date = log.timestamp ? new Date(log.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '--';
+            const hours = calculateHoursDiff(log.timestamp, log.check_out_time);
+            tableRows += `
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td style="padding: 10px; border-bottom: 1px solid #ddd;">${log.name} (${log.username})</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #ddd;">${log.department || 'General'}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #ddd;">${date}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #ddd;">${checkIn}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #ddd;">${checkOut}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #ddd;">${hours}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #ddd; font-weight: 700; color: ${log.status === 'Late Arrival' ? '#ff9500' : '#34c759'};">${log.status}</td>
+                </tr>
+            `;
+        });
+        
+        printWindow.document.write(`
+            <html>
+            <head>
+                <title>Attendance Report Ledger</title>
+                <style>
+                    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px; color: #333; }
+                    h2 { margin-bottom: 5px; font-weight: 700; }
+                    p { color: #666; font-size: 14px; margin-bottom: 30px; }
+                    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+                    th { padding: 12px 10px; font-weight: 700; color: #555; background: #f5f5f7; border-bottom: 2px solid #ddd; }
+                </style>
+            </head>
+            <body>
+                <h2>PassBiometric Attendance Ledger</h2>
+                <p>Generated: ${new Date().toLocaleString()} | Filtered records: ${filtered.length}</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>STUDENT</th>
+                            <th>DEPARTMENT</th>
+                            <th>DATE</th>
+                            <th>CHECK-IN</th>
+                            <th>CHECK-OUT</th>
+                            <th>HOURS</th>
+                            <th>STATUS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                    </tbody>
+                </table>
+                <script>
+                    window.onload = function() {
+                        window.print();
+                        window.close();
+                    }
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+        showToast("PDF Print dialogue initialized", "success");
+    }
+}
+
+function calculateHoursDiff(checkIn, checkOut) {
+    if (!checkIn || !checkOut) return '-';
+    const start = new Date(checkIn);
+    const end = new Date(checkOut);
+    const diffMs = end - start;
+    if (diffMs < 0) return '-';
+    const totalMins = Math.floor(diffMs / 60000);
+    const hrs = Math.floor(totalMins / 60);
+    const mins = totalMins % 60;
+    return `${hrs}h ${mins}m`;
 }

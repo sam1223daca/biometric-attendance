@@ -38,6 +38,7 @@
                 <a href="/register" class="btn btn-secondary">Enroll User</a>
                 <a href="/attendance" class="btn btn-primary" id="checkpoint-link">Desktop Checkpoint</a>
                 <a href="/mobile" class="btn btn-primary" id="mobile-quick-check" style="display: none;">Do Attendance</a>
+                <button class="btn btn-secondary" id="student-portal-btn" style="background: rgba(0, 113, 227, 0.05); color: var(--system-blue); border: 1.5px solid rgba(0, 113, 227, 0.15);">Student Portal</button>
                 <button class="btn btn-secondary" id="admin-login-btn">Admin Portal</button>
             </div>
         </header>
@@ -81,6 +82,70 @@
                     <span>Attendance Check-in Locations</span>
                 </div>
                 <div class="map-container" id="leaflet-map-element"></div>
+            </div>
+        </div>
+
+        <!-- Admin Advanced Reports Section (Shown only when Admin logged in) -->
+        <div class="glass-card admin-reports-panel" id="admin-reports-section" style="margin-top: 24px; display: none; padding: 20px;">
+            <div class="section-title" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 16px; font-weight: 700; color: var(--text-primary);">Admin Advanced Reports</span>
+                <span id="reports-count-badge" class="log-badge badge-approved" style="font-size: 11px;">0 records</span>
+            </div>
+
+            <!-- Filters Grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 20px;">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 10px; font-weight: 700; color: var(--text-secondary);">DATE</label>
+                    <input type="date" id="filter-date" style="padding: 6px 10px; font-size: 12px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.12); background: rgba(255,255,255,0.8); font-family: inherit;">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 10px; font-weight: 700; color: var(--text-secondary);">DEPARTMENT</label>
+                    <input type="text" id="filter-dept" placeholder="Department" style="padding: 6px 10px; font-size: 12px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.12); background: rgba(255,255,255,0.8); font-family: inherit;">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 10px; font-weight: 700; color: var(--text-secondary);">STUDENT NAME / ID</label>
+                    <input type="text" id="filter-student" placeholder="Name or ID" style="padding: 6px 10px; font-size: 12px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.12); background: rgba(255,255,255,0.8); font-family: inherit;">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 10px; font-weight: 700; color: var(--text-secondary);">STATUS</label>
+                    <select id="filter-status" style="padding: 6px 10px; font-size: 12px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.12); background: rgba(255,255,255,0.8); font-family: inherit;">
+                        <option value="All">All</option>
+                        <option value="On Time">On Time</option>
+                        <option value="Late Arrival">Late Arrival</option>
+                        <option value="Absent">Absent</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: flex-end;">
+                    <button class="btn btn-primary" id="btn-filter-reports" style="flex: 1; padding: 7px 12px; font-size: 12px; height: 32px; min-width: unset; margin: 0;">Filter</button>
+                    <button class="btn btn-secondary" id="btn-reset-reports" style="flex: 1; padding: 7px 12px; font-size: 12px; height: 32px; min-width: unset; margin: 0;">Reset</button>
+                </div>
+            </div>
+
+            <!-- Export Buttons Row -->
+            <div style="display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;">
+                <button class="btn btn-secondary" id="export-csv-btn" style="padding: 6px 14px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid rgba(0, 113, 227, 0.15); color: var(--system-blue); min-width: unset; width: auto; margin: 0;">📥 Export CSV</button>
+                <button class="btn btn-secondary" id="export-excel-btn" style="padding: 6px 14px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid rgba(52, 199, 89, 0.15); color: var(--system-green); min-width: unset; width: auto; margin: 0;">📥 Export Excel</button>
+                <button class="btn btn-secondary" id="export-pdf-btn" style="padding: 6px 14px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid rgba(255, 59, 48, 0.15); color: var(--system-red); min-width: unset; width: auto; margin: 0;">📥 Export PDF</button>
+            </div>
+
+            <!-- Reports Logs Table -->
+            <div style="width: 100%; overflow-x: auto; border: 1px solid rgba(0,0,0,0.08); border-radius: var(--radius-medium); background: rgba(255,255,255,0.4);">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; min-width: 600px;">
+                    <thead>
+                        <tr style="background: rgba(0,0,0,0.03); border-bottom: 1.5px solid rgba(0,0,0,0.08);">
+                            <th style="padding: 12px 16px; font-weight: 700; color: var(--text-secondary);">STUDENT</th>
+                            <th style="padding: 12px 16px; font-weight: 700; color: var(--text-secondary);">DEPARTMENT</th>
+                            <th style="padding: 12px 16px; font-weight: 700; color: var(--text-secondary);">DATE</th>
+                            <th style="padding: 12px 16px; font-weight: 700; color: var(--text-secondary);">CHECK-IN</th>
+                            <th style="padding: 12px 16px; font-weight: 700; color: var(--text-secondary);">CHECK-OUT</th>
+                            <th style="padding: 12px 16px; font-weight: 700; color: var(--text-secondary);">HOURS</th>
+                            <th style="padding: 12px 16px; font-weight: 700; color: var(--text-secondary);">STATUS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reports-table-body">
+                        <!-- Data dynamically loaded -->
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
