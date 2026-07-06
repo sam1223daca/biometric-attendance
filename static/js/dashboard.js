@@ -28,9 +28,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const studentBtn = document.getElementById('student-portal-btn');
     if (studentBtn) {
         studentBtn.onclick = () => {
-            const username = prompt("Enter Student Username / ID:");
-            if (!username) return;
-            resolveStudentUsername(username.trim());
+            document.getElementById('student-login-username').value = '';
+            document.getElementById('student-login-modal').style.display = 'flex';
+        };
+    }
+
+    // Bind Student Login Modal Buttons
+    const studentSubmit = document.getElementById('btn-student-login-submit');
+    const studentCancel = document.getElementById('btn-student-login-cancel');
+    if (studentSubmit) {
+        studentSubmit.onclick = () => {
+            const username = document.getElementById('student-login-username').value.trim();
+            if (!username) {
+                showToast("Username is required", "error");
+                return;
+            }
+            document.getElementById('student-login-modal').style.display = 'none';
+            resolveStudentUsername(username);
+        };
+    }
+    if (studentCancel) {
+        studentCancel.onclick = () => {
+            document.getElementById('student-login-modal').style.display = 'none';
         };
     }
 
@@ -308,13 +327,31 @@ function setupAdminDrawer() {
             loadSettings();
             resetInactivityTimer();
         } else {
-            // Initiate Admin Biometric Login flow
-            const username = prompt("Enter Administrator Username:");
-            if (!username) return;
-            
-            await performAdminBiometricLogin(username);
+            // Display Admin Login Modal
+            document.getElementById('admin-login-username').value = '';
+            document.getElementById('admin-login-modal').style.display = 'flex';
         }
     };
+
+    // Bind Admin Login Modal Buttons
+    const adminSubmit = document.getElementById('btn-admin-login-submit');
+    const adminCancel = document.getElementById('btn-admin-login-cancel');
+    if (adminSubmit) {
+        adminSubmit.onclick = async () => {
+            const username = document.getElementById('admin-login-username').value.trim();
+            if (!username) {
+                showToast("Username is required", "error");
+                return;
+            }
+            document.getElementById('admin-login-modal').style.display = 'none';
+            await performAdminBiometricLogin(username);
+        };
+    }
+    if (adminCancel) {
+        adminCancel.onclick = () => {
+            document.getElementById('admin-login-modal').style.display = 'none';
+        };
+    }
     
     // Close Drawer
     closeBtn.onclick = () => {

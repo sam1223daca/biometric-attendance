@@ -270,6 +270,60 @@
         </div>
     </div>
 
+    <!-- Student Login Modal -->
+    <div class="modal" id="student-login-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 3000; align-items: center; justify-content: center; backdrop-filter: blur(10px); padding: 20px;">
+        <div class="glass-card" style="width: 100%; max-width: 400px; padding: 30px; box-shadow: var(--shadow-heavy); text-align: center;">
+            <div class="brand-icon" style="margin: 0 auto 20px; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(0, 113, 227, 0.1); color: var(--system-blue);">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2 12a10 10 0 0 1 20 0c0 .76-.05 1.52-.16 2.27" />
+                    <path d="M5 12a7 7 0 0 1 14 0c0 1.45-.16 2.9-.48 4.3" />
+                    <path d="M8 12a4 4 0 0 1 8 0c0 2.1-.28 4.2-.82 6.24" />
+                    <path d="M11 12a1 1 0 0 1 2 0c0 2.72-.37 5.43-1.11 8.08" />
+                </svg>
+            </div>
+            <h3 style="font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">Student Portal</h3>
+            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 24px;">Enter your username or ID to verify biometrics.</p>
+            
+            <div style="display: flex; flex-direction: column; gap: 15px; text-align: left; margin-bottom: 24px;">
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <label style="font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Username / Student ID</label>
+                    <input type="text" id="student-login-username" placeholder="e.g. samarshi" style="padding: 10px 14px; font-size: 14px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.12); background: rgba(255,255,255,0.8); font-family: inherit;">
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-primary" id="btn-student-login-submit" style="flex: 1; margin: 0; padding: 10px; height: auto;">Verify Identity</button>
+                <button class="btn btn-secondary" id="btn-student-login-cancel" style="flex: 1; margin: 0; padding: 10px; background: rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.08); color: var(--text-primary); height: auto;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Login Modal -->
+    <div class="modal" id="admin-login-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 3000; align-items: center; justify-content: center; backdrop-filter: blur(10px); padding: 20px;">
+        <div class="glass-card" style="width: 100%; max-width: 400px; padding: 30px; box-shadow: var(--shadow-heavy); text-align: center;">
+            <div class="brand-icon" style="margin: 0 auto 20px; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255, 149, 0, 0.1); color: #ff9500;">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+            </div>
+            <h3 style="font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">Admin Authentication</h3>
+            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 24px;">Enter your admin username to unlock console.</p>
+            
+            <div style="display: flex; flex-direction: column; gap: 15px; text-align: left; margin-bottom: 24px;">
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <label style="font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Admin Username</label>
+                    <input type="text" id="admin-login-username" placeholder="e.g. admin" style="padding: 10px 14px; font-size: 14px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.12); background: rgba(255,255,255,0.8); font-family: inherit;">
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-primary" id="btn-admin-login-submit" style="flex: 1; margin: 0; padding: 10px; background: #ff9500; color: #fff; height: auto;">Verify Identity</button>
+                <button class="btn btn-secondary" id="btn-admin-login-cancel" style="flex: 1; margin: 0; padding: 10px; background: rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.08); color: var(--text-primary); height: auto;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Common and Dashboard Specific JS -->
     <script src="/static/js/app.js"></script>
     <script src="/static/js/dashboard.js"></script>
