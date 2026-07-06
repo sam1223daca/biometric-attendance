@@ -31,15 +31,33 @@ This system uses the browser's native Credentials API to record check-in and che
 * The code **rotates automatically every 5 minutes** for workstation security.
 * The Administrative Control Drawer tracks the countdown timer and displays the active token.
 
-### 4. Admin Workstation Auto-Lockout
+### 5. Admin Workstation Auto-Lockout
 * Implements active user activity listeners (`mousemove`, `click`, `keydown`, `scroll`, `touchstart`).
 * Automatically locks the Administrative drawer console after **60 seconds of idle inactivity** to secure the workstation if left unattended.
 
-### 5. Cascade Database Integrity
+### 6. Cascade Database Integrity
 * Built on a relational SQLite database.
 * Deleting a user profile automatically triggers a **cascade deletion** of all registered public key credentials and historical attendance logs, maintaining clean analytics.
 
-### 6. Premium Glassmorphic Design System
+### 7. Dynamic Check-In & Check-Out Time Windows
+* **Dynamic Settings Control**: Administrators can change check-in limits (start/end) and check-out limits (start/end) dynamically from the Administrative drawer.
+* **Strict Arrival Enforcement**: Blocks check-ins attempted before the scheduled start time. Automatically tags check-ins completed after the end time as `"Late Arrival"`.
+* **Checkout Window Lock**: Blocks early check-outs or late log-out attempts outside of the scheduled check-out period.
+
+### 8. Student Portal Dashboard & Monthly Timelines
+* **Access Redirection**: Users can enter their username in the "Student Portal" landing interface to resolve their user ID and access their personal portal view (`/student?id=X`).
+* **Visual Summary Indicators**: Displays active enrollment avatars, role details, and summary stats cards (Total Classes, Present Days, Absent Days, and Attendance Percentage with a color-changing progress bar).
+* **Date-Wise & Monthly Logs List**: Lists detailed daily attendance timelines grouped and filterable by Month.
+* **Inline Selfie Matches**: Snapped check-in and check-out camera selfies are displayed side-by-side inside timeline records.
+
+### 9. Always-Visible Admin Advanced Reports & Export Engine
+* **Advanced Reports Panel**: A comprehensive reports dashboard panel is visible directly below the fold on the main page.
+* **Search Filters Grid**: Allows filtering historical attendance logs by Date (date picker), Department (text search), Student name or ID (text search), and Status (All / On Time / Late Arrival / Absent).
+* **Sandbox-Compliant Exports**:
+  * **Export CSV / Excel**: Compiles filtered records in RAM memory and streams a downloadable file natively, bypassing browser iframe sandbox blocking.
+  * **Export PDF**: Opens an interactive print-ledger overlay page inside a glassmorphic print preview modal, allowing users to save documents cleanly via the browser's PDF print driver without pop-up issues.
+
+### 10. Premium Glassmorphic Design System
 * Translucent cards with a deep `30px` backdrop blur (`backdrop-filter`) and bright light borders.
 * Floating, animated background spheres that drift smoothly.
 * Micro-animations (cards lift `4px` upward and drop shadow deepens on hover) to make the UI feel alive.
