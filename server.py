@@ -951,16 +951,23 @@ def student_login_options(req: StudentLoginOptionsRequest, request: Request):
     if not db_credentials:
         raise HTTPException(status_code=400, detail="No enrolled biometric keys found for this student")
         
-    options = webauthn_handler.generate_login_options(rp_id, db_credentials)
+    options, state = webauthn_handler.generate_authentication_options(
+        username=req.username,
+        rp_id=rp_id,
+        user_credentials=db_credentials
+    )
     
-    challenge_str = options["publicKey"]["challenge"]
+    if not options:
+        raise HTTPException(status_code=400, detail="Failed to generate biometric options")
+        
+    challenge_str = options["challenge"]
     login_states[challenge_str] = {
-        "state": options["state"],
+        "state": state,
         "user_id": user["id"],
         "username": user["username"],
         "role": user["role"]
     }
-    return options["publicKey"]
+    return options
 
 @app.post("/api/student/login-verify")
 def student_login_verify(req: StudentLoginVerifyRequest, request: Request):
