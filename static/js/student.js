@@ -25,13 +25,38 @@ async function fetchStudentDashboardData(userId) {
     try {
         const adminToken = localStorage.getItem('admin_token');
         const studentToken = localStorage.getItem('student_token');
-        const token = adminToken || studentToken;
+        const token = studentToken || adminToken;
         
         const res = await fetch(`/api/student/${userId}/dashboard-data`, {
             headers: {
                 'Authorization': `Bearer ${token || ''}`
             }
         });
+        
+        if (res.status === 401 || res.status === 403) {
+            document.getElementById('student-name').textContent = "Access Denied";
+            document.getElementById('timeline-container').innerHTML = `
+                <div style="text-align: center; padding: 30px; background: rgba(255, 59, 48, 0.05); border-radius: var(--radius-medium); border: 1px solid rgba(255, 59, 48, 0.15);">
+                    <div style="font-size: 16px; font-weight: 700; color: var(--system-red); margin-bottom: 8px;">Session Expired or Access Denied</div>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;">Please authenticate via the Student Portal to view this dashboard.</p>
+                    <a href="/" class="btn btn-primary" style="display: inline-flex; width: auto; margin: 0; padding: 8px 20px; font-size: 13px; height: auto;">Return to Portal</a>
+                </div>
+            `;
+            return;
+        }
+        
+        if (res.status === 404) {
+            document.getElementById('student-name').textContent = "Not Found";
+            document.getElementById('timeline-container').innerHTML = `
+                <div style="text-align: center; padding: 30px; background: rgba(255, 149, 0, 0.05); border-radius: var(--radius-medium); border: 1px solid rgba(255, 149, 0, 0.15);">
+                    <div style="font-size: 16px; font-weight: 700; color: #ff9500; margin-bottom: 8px;">Student Record Not Found</div>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;">No record matches this student ID.</p>
+                    <a href="/" class="btn btn-secondary" style="display: inline-flex; width: auto; margin: 0; padding: 8px 20px; font-size: 13px; background: rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.08); color: var(--text-primary); height: auto;">Return to Portal</a>
+                </div>
+            `;
+            return;
+        }
+        
         if (!res.ok) {
             throw new Error("Failed to load student dashboard logs");
         }

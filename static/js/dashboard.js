@@ -1260,8 +1260,8 @@ async function resolveStudentUsername(username) {
             localStorage.setItem('student_token', auth.token);
             showToast("Authenticated successfully!", "success");
             setTimeout(() => {
-                window.open(`/student?id=${auth.userId}`, '_blank');
-            }, 1000);
+                window.location.href = `/student?id=${auth.userId}`;
+            }, 800);
         } else {
             const err = await verifyRes.json();
             showToast(`Authentication failed: ${err.detail}`, "error");
