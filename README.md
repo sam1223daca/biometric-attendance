@@ -44,25 +44,26 @@ This system uses the browser's native Credentials API to record check-in and che
 * **Strict Arrival Enforcement**: Blocks check-ins attempted before the scheduled start time. Automatically tags check-ins completed after the end time as `"Late Arrival"`.
 * **Checkout Window Lock**: Blocks early check-outs or late log-out attempts outside of the scheduled check-out period.
 
-### 8. Student Portal Dashboard & Monthly Timelines
-* **Access Redirection**: Users can enter their username in the "Student Portal" landing interface to resolve their user ID and access their personal portal view (`/student?id=X`).
-* **Visual Summary Indicators**: Displays active enrollment avatars, role details, and summary stats cards (Total Classes, Present Days, Absent Days, and Attendance Percentage with a color-changing progress bar).
-* **Date-Wise & Monthly Logs List**: Lists detailed daily attendance timelines grouped and filterable by Month.
-* **Inline Selfie Matches**: Snapped check-in and check-out camera selfies are displayed side-by-side inside timeline records.
+### 8. Biometrically Locked Student Portal Dashboard & Monthly Timelines
+* **Passkey Portal Verification**: Instead of direct URL routing, accessing the student dashboard requires a full WebAuthn biometric login assertion flow. Entering a username opens a gorgeous glassmorphic modal prompting the student to scan their fingerprint or face.
+* **Temporary Session Tokens**: Successful authentication generates a secure, single-use `STUDENT-XXXX` session key mapped to their user ID on the server.
+* **Server-Side Access Checks**: The timeline query route `/api/student/{user_id}/dashboard-data` enforces authentication. It blocks requests with an HTTP `403 Forbidden` unless the request includes a valid Admin token or the matching student session token.
+* **Stateful Error UI**: If a session expires or a user tries to access a dashboard without logging in, the portal displays a dedicated, visually integrated "Session Expired or Access Denied" card with a direct return button.
+* **Slick Tab Redirections**: Student dashboard queries redirect inside the active window tab, bypassing browser popup blockers.
 
-### 9. Always-Visible Admin Advanced Reports & Export Engine
-* **Advanced Reports Panel**: A comprehensive reports dashboard panel is visible directly below the fold on the main page.
-* **Search Filters Grid**: Allows filtering historical attendance logs by Date (date picker), Department (text search), Student name or ID (text search), and Status (All / On Time / Late Arrival / Absent).
+### 9. Secured Admin Advanced Reports & Export Engine
+* **Authentication Locks**: The Advanced Reports panel is hidden by default (`display: none;`) and only slides visible once the administrator has successfully signed in (`adminToken` is active).
+* **Inactivity Wipe**: Locking the console or triggering the idle auto-lockout instantly hides the reports dashboard card.
 * **Sandbox-Compliant Exports**:
   * **Export CSV / Excel**: Compiles filtered records in RAM memory and streams a downloadable file natively, bypassing browser iframe sandbox blocking.
   * **Export PDF**: Opens an interactive print-ledger overlay page inside a glassmorphic print preview modal, allowing users to save documents cleanly via the browser's PDF print driver without pop-up issues.
 
-### 10. Premium Glassmorphic Design System
-* Translucent cards with a deep `30px` backdrop blur (`backdrop-filter`) and bright light borders.
-* Floating, animated background spheres that drift smoothly.
-* Micro-animations (cards lift `4px` upward and drop shadow deepens on hover) to make the UI feel alive.
-* Symmetrical Apple Touch ID vector branding.
-* Full mobile-responsive adjustments (vertical list reflows, layout wrap overrides, and scroll locking to prevent side-to-side drift).
+### 10. Premium Glassmorphic Design System & Modals
+* **Custom Login Modals**: Replaced primitive browser prompt alerts (`prompt()`) with beautiful, animated glassmorphic overlays for both Student and Admin biometric login requests.
+* **Visual Styling**: Features translucent cards with a deep `30px` backdrop blur (`backdrop-filter`) and bright light borders.
+* **Floating Entities**: Features animated background spheres that drift smoothly.
+* **Micro-animations**: Hovering over cards lifts them `4px` upward and deepens shadows to make the UI feel alive.
+* **Responsive Layouts**: Full mobile-responsive adjustments (vertical list reflows, layout wrap overrides, and scroll locking to prevent side-to-side drift).
 
 ---
 
