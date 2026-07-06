@@ -11,6 +11,7 @@ This system uses the browser's native Credentials API to record check-in and che
 ### 1. Cryptographic Passkey Authentication (WebAuthn)
 * Uses native FIDO2 client APIs to perform secure hardware-backed biometric verification.
 * Eliminates weak passwords, credentials storage leaks, and verification forgery.
+* **Device-Bound Keys (Non-Syncable)**: Configured to request non-resident credentials (`ResidentKeyRequirement.DISCOURAGED`). This forces the browser to create hardware-locked, non-syncable key pairs restricted exclusively to the physical secure enclave of the enrolling device, preventing credentials synchronization across cloud accounts (Google/iCloud).
 * Implements a **signature count check** on the backend to detect and block cloned credentials or replay attacks.
 
 ### 2. Geolocation Drift Lock
