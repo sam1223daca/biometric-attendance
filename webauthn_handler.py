@@ -6,7 +6,8 @@ from fido2.webauthn import (
     UserVerificationRequirement,
     RegistrationResponse,
     AuthenticationResponse,
-    AttestedCredentialData
+    AttestedCredentialData,
+    ResidentKeyRequirement
 )
 from fido2.utils import websafe_encode, websafe_decode
 import json
@@ -60,7 +61,8 @@ def generate_registration_options(user_id: int, username: str, name: str, rp_id:
         user=user,
         credentials=exclude_credentials,
         authenticator_attachment=AuthenticatorAttachment.PLATFORM,
-        user_verification=UserVerificationRequirement.REQUIRED
+        user_verification=UserVerificationRequirement.REQUIRED,
+        resident_key_requirement=ResidentKeyRequirement.DISCOURAGED
     )
     
     options = make_serializable(registration_data.public_key)
