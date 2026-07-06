@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (studentBtn) {
         studentBtn.onclick = () => {
             document.getElementById('student-login-username').value = '';
-            document.getElementById('student-login-modal').style.display = 'flex';
+            document.getElementById('student-login-modal').classList.add('active');
         };
     }
 
@@ -43,13 +43,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast("Username is required", "error");
                 return;
             }
-            document.getElementById('student-login-modal').style.display = 'none';
+            document.getElementById('student-login-modal').classList.remove('active');
             resolveStudentUsername(username);
         };
     }
     if (studentCancel) {
         studentCancel.onclick = () => {
-            document.getElementById('student-login-modal').style.display = 'none';
+            document.getElementById('student-login-modal').classList.remove('active');
         };
     }
 
@@ -329,7 +329,7 @@ function setupAdminDrawer() {
         } else {
             // Display Admin Login Modal
             document.getElementById('admin-login-username').value = '';
-            document.getElementById('admin-login-modal').style.display = 'flex';
+            document.getElementById('admin-login-modal').classList.add('active');
         }
     };
 
@@ -343,13 +343,13 @@ function setupAdminDrawer() {
                 showToast("Username is required", "error");
                 return;
             }
-            document.getElementById('admin-login-modal').style.display = 'none';
+            document.getElementById('admin-login-modal').classList.remove('active');
             await performAdminBiometricLogin(username);
         };
     }
     if (adminCancel) {
         adminCancel.onclick = () => {
-            document.getElementById('admin-login-modal').style.display = 'none';
+            document.getElementById('admin-login-modal').classList.remove('active');
         };
     }
     
@@ -1300,7 +1300,7 @@ function setupAdminReports() {
     const modalPrint = document.getElementById('btn-modal-print');
     if (modalClose) {
         modalClose.onclick = () => {
-            document.getElementById('print-preview-modal').style.display = 'none';
+            document.getElementById('print-preview-modal').classList.remove('active');
             document.getElementById('print-preview-iframe').src = '';
         };
     }
@@ -1426,7 +1426,7 @@ function exportReport(format) {
         const iframe = document.getElementById('print-preview-iframe');
         if (modal && iframe) {
             iframe.src = exportUrl;
-            modal.style.display = 'flex';
+            modal.classList.add('active');
         }
     } else {
         window.location.href = exportUrl;
