@@ -23,7 +23,15 @@ let studentLogs = []; // global timeline data
 
 async function fetchStudentDashboardData(userId) {
     try {
-        const res = await fetch(`/api/student/${userId}/dashboard-data`);
+        const adminToken = localStorage.getItem('admin_token');
+        const studentToken = localStorage.getItem('student_token');
+        const token = adminToken || studentToken;
+        
+        const res = await fetch(`/api/student/${userId}/dashboard-data`, {
+            headers: {
+                'Authorization': `Bearer ${token || ''}`
+            }
+        });
         if (!res.ok) {
             throw new Error("Failed to load student dashboard logs");
         }

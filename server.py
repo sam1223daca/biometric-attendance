@@ -871,6 +871,13 @@ class SettingsUpdateRequest(BaseModel):
     checkout_start: str
     checkout_end: str
 
+class StudentLoginOptionsRequest(BaseModel):
+    username: str
+
+class StudentLoginVerifyRequest(BaseModel):
+    challenge: str
+    credential: Dict[str, Any]
+
 @app.get("/api/admin/settings")
 def get_admin_settings(token: str = Depends(get_admin_token)):
     """Retrieve schedule windows (Requires Admin token)."""
@@ -896,9 +903,31 @@ def get_public_settings():
     """Retrieve schedule windows for public UI visibility (No auth required)."""
     return database.get_settings()
 
+student_tokens: Dict[str, int] = {}
+
 @app.get("/api/student/{user_id}/dashboard-data")
-def get_student_dashboard_data(user_id: int):
-    """Retrieve profile summary and date-wise timeline logs for a specific student."""
+def get_student_dashboard_data(user_id: int, authorization: Optional[str] = Header(None)):
+    """Retrieve profile summary and date-wise timeline logs for a specific student (Requires Admin or Self Auth)."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid authentication header")
+        
+    token = authorization.split(" ")[1]
+    
+    # 1. Check if valid Admin token
+    is_admin = False
+    try:
+        from security import verify_token
+        verify_token(token)
+        is_admin = True
+    except Exception:
+        pass
+        
+    # 2. Check if valid student token matching this user_id
+    is_self = (student_tokens.get(token) == user_id)
+    
+    if not is_admin and not is_self:
+        raise HTTPException(status_code=403, detail="Access denied: Unauthorized dashboard access")
+        
     summary = database.get_student_summary(user_id)
     if not summary:
         raise HTTPException(status_code=404, detail="Student record not found")
@@ -906,6 +935,72 @@ def get_student_dashboard_data(user_id: int):
     return {
         "summary": summary,
         "timeline": timeline
+    }
+
+@app.post("/api/student/login-options")
+def student_login_options(req: StudentLoginOptionsRequest, request: Request):
+    """Generate WebAuthn login options for the student dashboard biometric auth."""
+    host = request.headers.get("host", "localhost")
+    rp_id = host.split(":")[0]
+    
+    user = database.get_user_by_username(req.username)
+    if not user:
+        raise HTTPException(status_code=404, detail="Student username not found")
+        
+    db_credentials = database.get_credentials_for_user(user["id"])
+    if not db_credentials:
+        raise HTTPException(status_code=400, detail="No enrolled biometric keys found for this student")
+        
+    options = webauthn_handler.generate_login_options(rp_id, db_credentials)
+    
+    challenge_str = options["publicKey"]["challenge"]
+    login_states[challenge_str] = {
+        "state": options["state"],
+        "user_id": user["id"],
+        "username": user["username"],
+        "role": user["role"]
+    }
+    return options["publicKey"]
+
+@app.post("/api/student/login-verify")
+def student_login_verify(req: StudentLoginVerifyRequest, request: Request):
+    """Verify WebAuthn login assertion and issue a temporary student token."""
+    host = request.headers.get("host", "localhost")
+    rp_id = host.split(":")[0]
+    
+    challenge = req.challenge
+    if challenge not in login_states:
+        raise HTTPException(status_code=400, detail="Invalid or expired challenge session")
+        
+    session_data = login_states[challenge]
+    user_id = session_data["user_id"]
+    
+    db_credentials = database.get_credentials_for_user(user_id)
+    try:
+        verified, new_sign_count = webauthn_handler.verify_authentication(
+            state=session_data["state"],
+            response_dict=req.credential,
+            rp_id=rp_id,
+            db_credentials=db_credentials
+        )
+        if not verified:
+            raise HTTPException(status_code=400, detail="Invalid biometric credentials assertion")
+        database.update_credential_sign_count(req.credential["id"], new_sign_count)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Verification failed: {str(e)}")
+        
+    # Clean up challenge state
+    del login_states[challenge]
+    
+    # Generate temporary access token for this session
+    import secrets
+    student_token = "STUDENT-" + secrets.token_urlsafe(32)
+    student_tokens[student_token] = user_id
+    
+    return {
+        "success": True,
+        "token": student_token,
+        "userId": user_id
     }
 
 @app.get("/api/users/by-username/{username}")

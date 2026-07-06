@@ -88,10 +88,15 @@ async function loadDashboardData() {
             renderLogsList(allLogs);
             updateMapMarkers(allLogs);
             
-            // Refresh advanced reports table unconditionally
+            // Refresh advanced reports table conditionally based on admin login state
             const reportsSection = document.getElementById('admin-reports-section');
             if (reportsSection) {
-                renderReportsTable();
+                if (adminToken) {
+                    reportsSection.style.display = 'block';
+                    renderReportsTable();
+                } else {
+                    reportsSection.style.display = 'none';
+                }
             }
         }
         
@@ -1152,16 +1157,82 @@ async function saveSettings() {
 
 async function resolveStudentUsername(username) {
     try {
-        const res = await fetch(`/api/users/by-username/${encodeURIComponent(username)}`);
-        if (!res.ok) {
-            showToast("Username not found. Check ID and try again.", "error");
+        // 1. Fetch student login options
+        const optionsRes = await fetch('/api/student/login-options', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username })
+        });
+        
+        if (!optionsRes.ok) {
+            const err = await optionsRes.json();
+            showToast(`User error: ${err.detail}`, "error");
             return;
         }
-        const data = await res.json();
-        window.open(`/student?id=${data.id}`, '_blank');
+        
+        const options = await optionsRes.json();
+        
+        // 2. Perform WebAuthn biometric login
+        const challengeBuffer = base64UrlToBuffer(options.challenge);
+        const allowCreds = options.allowCredentials.map(cred => ({
+            id: base64UrlToBuffer(cred.id),
+            type: cred.type
+        }));
+        
+        const credentialGetOptions = {
+            publicKey: {
+                challenge: challengeBuffer,
+                allowCredentials: allowCreds,
+                userVerification: 'required',
+                rpId: window.location.hostname
+            }
+        };
+        
+        showToast("Biometric verification requested. Tap sensor...", "info");
+        const assertion = await navigator.credentials.get(credentialGetOptions);
+        
+        const clientDataJSON = bufferToBase64Url(assertion.response.clientDataJSON);
+        const authenticatorData = bufferToBase64Url(assertion.response.authenticatorData);
+        const signature = bufferToBase64Url(assertion.response.signature);
+        const userHandle = assertion.response.userHandle ? bufferToBase64Url(assertion.response.userHandle) : null;
+        
+        const verifyPayload = {
+            challenge: options.challenge,
+            credential: {
+                id: assertion.id,
+                rawId: bufferToBase64Url(assertion.rawId),
+                type: assertion.type,
+                response: {
+                    clientDataJSON,
+                    authenticatorData,
+                    signature,
+                    userHandle
+                }
+            }
+        };
+        
+        // 3. Verify on server
+        const verifyRes = await fetch('/api/student/login-verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(verifyPayload)
+        });
+        
+        if (verifyRes.ok) {
+            const auth = await verifyRes.json();
+            localStorage.setItem('student_token', auth.token);
+            showToast("Authenticated successfully!", "success");
+            setTimeout(() => {
+                window.open(`/student?id=${auth.userId}`, '_blank');
+            }, 1000);
+        } else {
+            const err = await verifyRes.json();
+            showToast(`Authentication failed: ${err.detail}`, "error");
+        }
+        
     } catch (e) {
         console.error(e);
-        showToast("Error resolving student details", "error");
+        showToast("Biometric authentication cancelled or failed", "error");
     }
 }
 
