@@ -1293,8 +1293,12 @@ function exportReport(format) {
     
     const exportUrl = `/api/admin/export?${params.toString()}`;
     
-    // Open in new window or start file download natively
-    window.open(exportUrl, '_blank');
+    // Bypass popup blockers in sandboxed iframe environments for CSV/Excel formats
+    if (format === 'pdf') {
+        window.open(exportUrl, '_blank');
+    } else {
+        window.location.href = exportUrl;
+    }
     showToast(`Export request initiated for ${format.toUpperCase()}`, "info");
 }
 
