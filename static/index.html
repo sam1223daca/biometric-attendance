@@ -254,6 +254,22 @@
         </div>
     </div>
 
+    <!-- Print Preview Modal -->
+    <div class="modal" id="print-preview-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 3000; align-items: center; justify-content: center; backdrop-filter: blur(10px); padding: 20px;">
+        <div class="glass-card" style="width: 100%; max-width: 800px; height: 90vh; display: flex; flex-direction: column; padding: 20px; box-shadow: var(--shadow-heavy);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-shrink: 0;">
+                <h3 style="font-size: 16px; font-weight: 700; color: var(--text-primary); margin: 0;">Print Ledger Preview</h3>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" id="btn-modal-print" style="padding: 6px 14px; font-size: 12px; min-width: unset; margin: 0;">🖨️ Print Ledger</button>
+                    <button class="btn btn-secondary" id="btn-modal-close" style="padding: 6px 14px; font-size: 12px; min-width: unset; margin: 0; background: rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.08); color: var(--text-primary);">Close</button>
+                </div>
+            </div>
+            <div style="flex: 1; min-height: 0; border: 1px solid rgba(0,0,0,0.10); border-radius: var(--radius-medium); overflow: hidden; background: #fff;">
+                <iframe id="print-preview-iframe" style="width: 100%; height: 100%; border: none;"></iframe>
+            </div>
+        </div>
+    </div>
+
     <!-- Common and Dashboard Specific JS -->
     <script src="/static/js/app.js"></script>
     <script src="/static/js/dashboard.js"></script>

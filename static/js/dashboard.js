@@ -1186,6 +1186,25 @@ function setupAdminReports() {
     if (csvBtn) csvBtn.onclick = () => exportReport('csv');
     if (excelBtn) excelBtn.onclick = () => exportReport('excel');
     if (pdfBtn) pdfBtn.onclick = () => exportReport('pdf');
+
+    // Bind Print Preview Modal buttons
+    const modalClose = document.getElementById('btn-modal-close');
+    const modalPrint = document.getElementById('btn-modal-print');
+    if (modalClose) {
+        modalClose.onclick = () => {
+            document.getElementById('print-preview-modal').style.display = 'none';
+            document.getElementById('print-preview-iframe').src = '';
+        };
+    }
+    if (modalPrint) {
+        modalPrint.onclick = () => {
+            const iframe = document.getElementById('print-preview-iframe');
+            if (iframe && iframe.contentWindow) {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            }
+        };
+    }
 }
 
 function renderReportsTable(showToastOnFilter = false) {
@@ -1293,9 +1312,14 @@ function exportReport(format) {
     
     const exportUrl = `/api/admin/export?${params.toString()}`;
     
-    // Bypass popup blockers in sandboxed iframe environments for CSV/Excel formats
+    // Bypass popup blockers in sandboxed iframe environments
     if (format === 'pdf') {
-        window.open(exportUrl, '_blank');
+        const modal = document.getElementById('print-preview-modal');
+        const iframe = document.getElementById('print-preview-iframe');
+        if (modal && iframe) {
+            iframe.src = exportUrl;
+            modal.style.display = 'flex';
+        }
     } else {
         window.location.href = exportUrl;
     }
