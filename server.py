@@ -914,13 +914,7 @@ def get_student_dashboard_data(user_id: int, authorization: Optional[str] = Head
     token = authorization.split(" ")[1]
     
     # 1. Check if valid Admin token
-    is_admin = False
-    try:
-        from security import verify_token
-        verify_token(token)
-        is_admin = True
-    except Exception:
-        pass
+    is_admin = security.is_admin_session_valid(token)
         
     # 2. Check if valid student token matching this user_id
     is_self = (student_tokens.get(token) == user_id)
